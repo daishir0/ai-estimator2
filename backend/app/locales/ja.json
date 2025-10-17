@@ -157,5 +157,31 @@
     "label_answer": "回答",
     "label_output_time": "【出力日時】",
     "datetime_format": "%Y年%m月%d日 %H時%M分"
-  }
+  },
+  "sample_excel": [
+    {"name": "要件定義書", "description": "システム全体の要件を整理・明文化した文書"},
+    {"name": "基本設計書", "description": "システムの基本的な設計方針と全体構成を記載した文書"},
+    {"name": "詳細設計書", "description": "各機能の詳細な設計内容を記載した文書"},
+    {"name": "データベース設計", "description": "データベースのテーブル設計とER図の作成"},
+    {"name": "API設計", "description": "REST APIの仕様書作成と各エンドポイントの設計"},
+    {"name": "フロントエンド開発", "description": "React/Vue.jsを使用したユーザーインターフェースの開発"},
+    {"name": "バックエンド開発", "description": "Node.js/Python を使用したサーバーサイドの開発"},
+    {"name": "認証機能", "description": "ユーザー認証とアクセス制御機能の実装"},
+    {"name": "管理画面", "description": "管理者用のダッシュボードと設定画面の開発"},
+    {"name": "単体テスト", "description": "各機能単位での自動テストの作成と実行"},
+    {"name": "結合テスト", "description": "システム全体の結合テストの実施"},
+    {"name": "運用マニュアル", "description": "システム運用のためのマニュアル作成"},
+    {"name": "デプロイメント", "description": "本番環境への展開とCI/CDパイプラインの構築"}
+  ],
+  "sample_csv": [
+    {"name": "要件定義書", "description": "システム全体の要件を定義し、機能一覧・画面一覧・帳票一覧などを整理した文書"},
+    {"name": "基本設計書", "description": "要件定義に基づき、画面設計・DB設計・処理フロー設計を行った文書"},
+    {"name": "詳細設計書", "description": "基本設計に基づき、プログラム単位での詳細な仕様を記載した文書"},
+    {"name": "プログラム開発", "description": "詳細設計に基づいたプログラミング・コーディング作業"},
+    {"name": "単体テスト", "description": "プログラム単位での動作確認テスト"},
+    {"name": "結合テスト", "description": "複数プログラムを組み合わせた機能単位での動作確認テスト"},
+    {"name": "総合テスト", "description": "システム全体での動作確認・性能確認テスト"},
+    {"name": "運用マニュアル", "description": "システムの運用手順・保守手順を記載したマニュアル"},
+    {"name": "ユーザーマニュアル", "description": "エンドユーザー向けの操作マニュアル"}
+  ]
 }

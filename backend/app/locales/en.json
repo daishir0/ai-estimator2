@@ -157,5 +157,31 @@
     "label_answer": "Answer",
     "label_output_time": "[Output Date/Time]",
     "datetime_format": "%Y/%m/%d %H:%M"
-  }
+  },
+  "sample_excel": [
+    {"name": "Requirements Document", "description": "Document outlining and formalizing overall system requirements"},
+    {"name": "Basic Design Document", "description": "Document describing basic design policies and overall system architecture"},
+    {"name": "Detailed Design Document", "description": "Document detailing specific design content for each feature"},
+    {"name": "Database Design", "description": "Database table design and ER diagram creation"},
+    {"name": "API Design", "description": "REST API specification and endpoint design"},
+    {"name": "Frontend Development", "description": "User interface development using React/Vue.js"},
+    {"name": "Backend Development", "description": "Server-side development using Node.js/Python"},
+    {"name": "Authentication Feature", "description": "Implementation of user authentication and access control"},
+    {"name": "Admin Dashboard", "description": "Administrator dashboard and settings panel development"},
+    {"name": "Unit Testing", "description": "Creation and execution of automated tests for each feature"},
+    {"name": "Integration Testing", "description": "System-wide integration testing"},
+    {"name": "Operations Manual", "description": "Manual creation for system operations"},
+    {"name": "Deployment", "description": "Production deployment and CI/CD pipeline setup"}
+  ],
+  "sample_csv": [
+    {"name": "Requirements Document", "description": "Document defining overall system requirements including feature lists, screen lists, and report lists"},
+    {"name": "Basic Design Document", "description": "Document covering screen design, database design, and process flow design based on requirements"},
+    {"name": "Detailed Design Document", "description": "Document describing detailed specifications at the program unit level based on basic design"},
+    {"name": "Programming Development", "description": "Programming and coding work based on detailed design"},
+    {"name": "Unit Testing", "description": "Operational verification testing at the program unit level"},
+    {"name": "Integration Testing", "description": "Functional testing combining multiple programs"},
+    {"name": "System Testing", "description": "System-wide operational and performance verification testing"},
+    {"name": "Operations Manual", "description": "Manual documenting system operation and maintenance procedures"},
+    {"name": "User Manual", "description": "End-user operation manual"}
+  ]
 }

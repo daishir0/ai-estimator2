@@ -287,15 +287,31 @@ async def download_result(task_id: str, db: Session = Depends(get_db)):
 @router.get("/sample-input")
 async def download_sample_input():
     """
-    サンプルのExcel入力ファイルをダウンロード
-    - 既定パス: settings.UPLOAD_DIR/sample_input.xlsx
+    サンプルのExcel入力ファイルをダウンロード（言語設定に応じて動的生成）
     """
-    sample_path = os.path.join(settings.UPLOAD_DIR, "sample_input.xlsx")
-    if not os.path.exists(sample_path):
-        raise HTTPException(status_code=404, detail="サンプルファイルが見つかりません")
+    import pandas as pd
+    from datetime import datetime
+
+    # 翻訳データからサンプルデータを取得
+    sample_data = t('sample_excel')
+
+    # DataFrameを作成
+    df = pd.DataFrame(sample_data)
+
+    # 一時ファイルに保存
+    temp_file = os.path.join(
+        settings.UPLOAD_DIR,
+        f"sample_input_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+    )
+    df.to_excel(
+        temp_file,
+        index=False,
+        header=[t('excel.column_deliverable_name'), t('excel.column_description')],
+        engine='openpyxl'
+    )
 
     return FileResponse(
-        sample_path,
+        temp_file,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename="sample_input.xlsx",
     )
@@ -304,15 +320,31 @@ async def download_sample_input():
 @router.get("/sample-input-csv")
 async def download_sample_input_csv():
     """
-    サンプルのCSV入力ファイルをダウンロード
-    - 既定パス: settings.UPLOAD_DIR/sample_input.csv
+    サンプルのCSV入力ファイルをダウンロード（言語設定に応じて動的生成）
     """
-    sample_path = os.path.join(settings.UPLOAD_DIR, "sample_input.csv")
-    if not os.path.exists(sample_path):
-        raise HTTPException(status_code=404, detail="サンプルCSVファイルが見つかりません")
+    import pandas as pd
+    from datetime import datetime
+
+    # 翻訳データからサンプルデータを取得
+    sample_data = t('sample_csv')
+
+    # DataFrameを作成
+    df = pd.DataFrame(sample_data)
+
+    # 一時ファイルに保存
+    temp_file = os.path.join(
+        settings.UPLOAD_DIR,
+        f"sample_input_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
+    )
+    df.to_csv(
+        temp_file,
+        index=False,
+        header=[t('excel.column_deliverable_name'), t('excel.column_description')],
+        encoding='utf-8-sig'  # BOM付きUTF-8でExcel互換性向上
+    )
 
     return FileResponse(
-        sample_path,
+        temp_file,
         media_type="text/csv",
         filename="sample_input.csv",
     )
