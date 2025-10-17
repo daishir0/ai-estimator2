@@ -13,4 +13,6 @@ class Estimate(Base):
     deliverable_description = Column(Text, nullable=True)
     person_days = Column(Float, nullable=False)
     amount = Column(Float, nullable=False)
-    reasoning = Column(Text, nullable=True)
+    reasoning = Column(Text, nullable=True)  # 後方互換性のため残す
+    reasoning_breakdown = Column(Text, nullable=True)  # 工数内訳
+    reasoning_notes = Column(Text, nullable=True)  # 根拠・備考

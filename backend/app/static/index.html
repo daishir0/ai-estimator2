@@ -205,15 +205,18 @@
         const desc = item.deliverable_description || item.description || '';
         const pd = Number(item.person_days || 0).toFixed(1);
         const amt = Math.round(item.amount || 0).toLocaleString();
-        const md = (item.reasoning || "").toString();
-        const htmlReason = DOMPurify.sanitize(marked.parse(md));
+        const breakdown = (item.reasoning_breakdown || item.reasoning || "").toString();
+        const notes = (item.reasoning_notes || "").toString();
+        const htmlBreakdown = DOMPurify.sanitize(marked.parse(breakdown));
+        const htmlNotes = DOMPurify.sanitize(marked.parse(notes));
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="px-3 py-2">${name}</td>
           <td class="px-3 py-2 text-slate-600">${desc}</td>
           <td class="px-3 py-2 text-right tabular-nums">${pd}</td>
           <td class="px-3 py-2 text-right tabular-nums">${amt}</td>
-          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlReason}</td>`;
+          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlBreakdown}</td>
+          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlNotes}</td>`;
         tbody.appendChild(tr);
 
         const card = document.createElement('div');
@@ -500,7 +503,8 @@
               <th class="px-3 py-2 text-left font-medium">説明</th>
               <th class="px-3 py-2 text-right font-medium">工数(人日)</th>
               <th class="px-3 py-2 text-right font-medium">金額</th>
-              <th class="px-3 py-2 text-left font-medium">根拠</th>
+              <th class="px-3 py-2 text-left font-medium">工数内訳</th>
+              <th class="px-3 py-2 text-left font-medium">根拠・備考</th>
             </tr>
           </thead>
           <tbody id="result-body" class="divide-y divide-slate-100 bg-white"></tbody>
@@ -625,8 +629,10 @@
         const pd = pdNum.toFixed(1);
         const amtNum = Math.round(item.amount || 0);
         const amt = amtNum.toLocaleString();
-        const md = (item.reasoning || '').toString();
-        const htmlReason = DOMPurify.sanitize(marked.parse(md));
+        const breakdown = (item.reasoning_breakdown || item.reasoning || '').toString();
+        const notes = (item.reasoning_notes || '').toString();
+        const htmlBreakdown = DOMPurify.sanitize(marked.parse(breakdown));
+        const htmlNotes = DOMPurify.sanitize(marked.parse(notes));
         const prevItem = prevMap.get(name);
         let deltaPd = 0, deltaAmt = 0;
         if (prevItem) {
@@ -646,7 +652,8 @@
           <td class="px-3 py-2 text-slate-600">${desc}</td>
           <td class="px-3 py-2 text-right tabular-nums">${pd}${pdBadge}</td>
           <td class="px-3 py-2 text-right tabular-nums">${amt}${amtBadge}</td>
-          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlReason}</td>`;
+          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlBreakdown}</td>
+          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlNotes}</td>`;
         tbody.appendChild(tr);
 
         const card = document.createElement('div');

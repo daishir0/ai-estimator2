@@ -62,7 +62,7 @@ class ExportService:
     def _add_estimate_columns(
         self, df: pd.DataFrame, estimates: List[Dict[str, Any]]
     ) -> pd.DataFrame:
-        """見積り列（C列：工数、D列：金額）を追加する"""
+        """見積り列（C列：工数、D列：金額、E列：工数内訳、F列：根拠・備考）を追加する"""
 
         # 見積りデータを辞書として整理
         estimate_dict = {est["name"]: est for est in estimates}
@@ -70,6 +70,8 @@ class ExportService:
         # 新しい列を追加
         person_days_list = []
         amounts_list = []
+        breakdown_list = []
+        notes_list = []
 
         for index, row in df.iterrows():
             deliverable_name = str(row.iloc[0])
@@ -78,13 +80,19 @@ class ExportService:
                 estimate = estimate_dict[deliverable_name]
                 person_days_list.append(estimate["person_days"])
                 amounts_list.append(estimate["amount"])
+                breakdown_list.append(estimate.get("reasoning_breakdown", estimate.get("reasoning", "")))
+                notes_list.append(estimate.get("reasoning_notes", ""))
             else:
                 person_days_list.append(0)
                 amounts_list.append(0)
+                breakdown_list.append("")
+                notes_list.append("")
 
         # 列を追加
         df["予想工数（人日）"] = person_days_list
         df["金額"] = amounts_list
+        df["工数内訳"] = breakdown_list
+        df["根拠・備考"] = notes_list
 
         return df
 
@@ -95,7 +103,7 @@ class ExportService:
         header_font = Font(bold=True)
         header_alignment = Alignment(horizontal="center")
 
-        for col in range(1, 5):  # A列からD列まで
+        for col in range(1, 7):  # A列からF列まで
             cell = worksheet.cell(row=1, column=col)
             cell.font = header_font
             cell.alignment = header_alignment
@@ -112,11 +120,21 @@ class ExportService:
             cell.number_format = "#,##0"
             cell.alignment = Alignment(horizontal="right")
 
+            # 工数内訳列（E列）の書式設定
+            cell = worksheet.cell(row=row, column=5)
+            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+            # 根拠・備考列（F列）の書式設定
+            cell = worksheet.cell(row=row, column=6)
+            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
         # 列幅の調整
         worksheet.column_dimensions["A"].width = 30
         worksheet.column_dimensions["B"].width = 50
         worksheet.column_dimensions["C"].width = 15
         worksheet.column_dimensions["D"].width = 15
+        worksheet.column_dimensions["E"].width = 40  # 工数内訳
+        worksheet.column_dimensions["F"].width = 40  # 根拠・備考
 
     def _add_totals_to_worksheet(
         self, worksheet, totals: Dict[str, float], data_rows: int

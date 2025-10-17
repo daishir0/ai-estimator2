@@ -93,6 +93,8 @@ class TaskService:
                 person_days=estimate_data["person_days"],
                 amount=estimate_data["amount"],
                 reasoning=estimate_data.get("reasoning"),
+                reasoning_breakdown=estimate_data.get("reasoning_breakdown"),
+                reasoning_notes=estimate_data.get("reasoning_notes"),
             )
             self.db.add(estimate)
         self.db.commit()
@@ -124,6 +126,8 @@ class TaskService:
                 person_days=e.get("person_days", 0.0),
                 amount=e.get("amount", 0.0),
                 reasoning=e.get("reasoning"),
+                reasoning_breakdown=e.get("reasoning_breakdown"),
+                reasoning_notes=e.get("reasoning_notes"),
             )
             self.db.add(est)
         self.db.commit()

@@ -54,7 +54,9 @@ class EstimatorService:
                 'description': d.get('description'),
                 'person_days': 5.0,
                 'amount': 5.0 * self.daily_unit_cost,
-                'reasoning': f'デフォルト見積り（リトライ失敗: {last}）'
+                'reasoning': f'デフォルト見積り（リトライ失敗: {last}）',
+                'reasoning_breakdown': f'デフォルト見積り: 5.0人日\n\n合計: 5.0人日',
+                'reasoning_notes': f'エラーが発生したため、デフォルト値を使用しました。\nエラー: {last}'
             }
             return (idx, est)
 
@@ -96,19 +98,22 @@ class EstimatorService:
 
 【厳守事項】
 - 単位は必ず「人日」を使用し、数字の桁を間違えないこと（例: 4.5人日を45日と書かない）
-- reasoning内のすべての数量表記も「人日」とし、小数1桁を維持する
+- reasoning_breakdown内のすべての数量表記も「人日」とし、小数1桁を維持する
 - 最後に「合計: X.X人日」と1行で明記し、JSONのperson_daysと完全に一致させる
 
 【出力形式】
 次のJSONのみをコードブロックなしで返す：
 {{
-  "person_days": 小数1桁の数値（例: 4.5）, 
-  "reasoning": "根拠の詳細（Markdown可）。工程別の人日内訳と『合計: X.X人日』を必ず含める。"
+  "person_days": 小数1桁の数値（例: 4.5）,
+  "reasoning_breakdown": "工数内訳（Markdown可）。工程別の人日内訳と『合計: X.X人日』を必ず含める。",
+  "reasoning_notes": "根拠・備考（Markdown可）。見積りの前提条件、リスク、補足説明など。"
 }}
 
 【見積り範囲】
 - 設計・実装・テスト・ドキュメント作成を含める
 - 成果物の複雑さを考慮した現実的な工数
+- reasoning_breakdownには工程別の数値内訳を記載
+- reasoning_notesには前提条件やリスク、注意点を記載
 """
         
         try:
@@ -131,36 +136,47 @@ class EstimatorService:
                 if json_match:
                     json_str = json_match.group()
                     result = json.loads(json_str)
-                    
+
                     person_days = float(result.get('person_days', 5.0))
-                    reasoning = result.get('reasoning', 'AIによる見積り')
+                    reasoning_breakdown = result.get('reasoning_breakdown', '')
+                    reasoning_notes = result.get('reasoning_notes', '')
+                    # 後方互換性: reasoning フィールドも保持
+                    reasoning = result.get('reasoning', f"{reasoning_breakdown}\n\n{reasoning_notes}")
                 else:
                     # JSONが見つからない場合のフォールバック
                     person_days = 5.0
+                    reasoning_breakdown = content
+                    reasoning_notes = ''
                     reasoning = content
-                    
+
             except (json.JSONDecodeError, ValueError):
                 person_days = 5.0
+                reasoning_breakdown = content
+                reasoning_notes = ''
                 reasoning = content
-                
+
         except Exception as e:
             print(f"AI見積りでエラーが発生しました: {e}")
             person_days = 5.0
+            reasoning_breakdown = "デフォルト見積り（AIエラーのため）"
+            reasoning_notes = ""
             reasoning = "デフォルト見積り（AIエラーのため）"
-        
-        # 推敲: reasoning末尾に合計の明記がなければ追記（JSONのperson_daysと整合）
-        if reasoning and '合計:' not in reasoning:
-            reasoning = reasoning.rstrip() + f"\n\n合計: {person_days:.1f}人日"
+
+        # 推敲: reasoning_breakdown末尾に合計の明記がなければ追記（JSONのperson_daysと整合）
+        if reasoning_breakdown and '合計:' not in reasoning_breakdown:
+            reasoning_breakdown = reasoning_breakdown.rstrip() + f"\n\n合計: {person_days:.1f}人日"
 
         # 金額計算
         amount = person_days * self.daily_unit_cost
-        
+
         return {
             'name': deliverable['name'],
             'description': deliverable['description'],
             'person_days': person_days,
             'amount': amount,
-            'reasoning': reasoning
+            'reasoning': reasoning,  # 後方互換性のため保持
+            'reasoning_breakdown': reasoning_breakdown,
+            'reasoning_notes': reasoning_notes
         }
     
     def calculate_totals(self, estimates: List[Dict[str, Any]]) -> Dict[str, float]:

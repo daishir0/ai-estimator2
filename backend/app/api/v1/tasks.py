@@ -185,6 +185,8 @@ async def get_task_result(task_id: str, db: Session = Depends(get_db)):
             person_days=est.person_days,
             amount=est.amount,
             reasoning=est.reasoning,
+            reasoning_breakdown=est.reasoning_breakdown,
+            reasoning_notes=est.reasoning_notes,
         )
         for est in estimates
     ]
@@ -281,6 +283,8 @@ async def chat_adjust(task_id: str, req: ChatRequest, db: Session = Depends(get_
             "person_days": float(e["person_days"]),
             "amount": float(e["amount"]),
             "reasoning": e.get("reasoning"),
+            "reasoning_breakdown": e.get("reasoning_breakdown"),
+            "reasoning_notes": e.get("reasoning_notes"),
         }
         for e in estimates
     ]
@@ -321,6 +325,8 @@ async def apply_adjusted_estimates(task_id: str, req: ApplyRequest, db: Session 
             "person_days": e.person_days,
             "amount": e.amount,
             "reasoning": e.reasoning,
+            "reasoning_breakdown": e.reasoning_breakdown,
+            "reasoning_notes": e.reasoning_notes,
         }
         for e in req.estimates
     ]
@@ -373,6 +379,8 @@ async def apply_adjusted_estimates(task_id: str, req: ApplyRequest, db: Session 
             person_days=est_row.person_days,
             amount=est_row.amount,
             reasoning=est_row.reasoning,
+            reasoning_breakdown=est_row.reasoning_breakdown,
+            reasoning_notes=est_row.reasoning_notes,
         )
         for est_row in estimates_rows
     ]
