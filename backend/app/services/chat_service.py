@@ -31,7 +31,7 @@ class ChatService:
 
     def _calc_totals(self, estimates: List[Dict[str, Any]]) -> Dict[str, float]:
         subtotal = float(sum(e.get("amount", 0.0) for e in estimates))
-        tax = round(subtotal * 0.1, 2)
+        tax = round(subtotal * settings.get_tax_rate(), 2)
         total = round(subtotal + tax, 2)
         return {"subtotal": subtotal, "tax": tax, "total": total}
 
@@ -189,7 +189,7 @@ class ChatService:
                     new_pd = round(before_pd * reduce_ratio, 1)
                     if abs(new_pd - before_pd) >= 0.05:
                         pd = new_pd
-                        amt = pd * settings.DAILY_UNIT_COST
+                        amt = pd * settings.get_daily_unit_cost()
                         did_change = True
                 # 記録（実際に変化があった場合のみ）
                 if did_change:
@@ -232,7 +232,7 @@ class ChatService:
                 nm = (e.get('deliverable_name') or '').lower()
                 if any(t in nm for t in targets):
                     pd = round(float(e['person_days']) * factor, 1)
-                    amt = pd * settings.DAILY_UNIT_COST
+                    amt = pd * settings.get_daily_unit_cost()
                     changed.append((e.get('deliverable_name') or e.get('name'), float(e['person_days']), pd, int(float(e['amount'])), int(amt)))
                     tmp.append({**e, 'person_days': pd, 'amount': amt})
                 else:
@@ -401,7 +401,7 @@ class ChatService:
 4. 論理的整合性を保つ（削減理由、追加理由を明確に）
 5. 成果物名は現在の見積に存在するもののみ使用（削減の場合）
 6. 増額の場合は新規成果物追加も可（例：セキュリティ強化、性能監視、バックアップ機能など）
-7. 単価は{settings.DAILY_UNIT_COST}円/人日として計算
+7. 単価は{settings.get_daily_unit_cost()}{t('ui.unit_yen')}/人日として計算
 """
 
         try:
@@ -670,10 +670,10 @@ class ChatService:
                         "content": (
                             f"{language_instruction}\n\n"
                             "以下は現在の見積です。各項目の人日(person_days)と金額(amount)を単価"
-                            f"{settings.DAILY_UNIT_COST}円/人日で整合がとれるように調整し、依頼文に沿って改善案を出してください。\n"
+                            f"{settings.get_daily_unit_cost()}{t('ui.unit_yen')}/人日で整合がとれるように調整し、依頼文に沿って改善案を出してください。\n"
                             "JSONのみ、コードブロックなしで返してください。フィールドは reply_md, estimates(配列), totals のみ。\n"
                             "estimates の各要素は {deliverable_name, deliverable_description, person_days(小数1桁), amount(数値), reasoning(短いMarkdown可)} とします。\n"
-                            "totals は {subtotal, tax, total}（税込10%）です。\n"
+                            f"totals は {{subtotal, tax, total}}（税率{settings.get_tax_rate()*100:.0f}%）です。\n"
                             "依頼文:\n" + (message or "") + "\n\n"
                             "現在の見積(JSON):\n" + json.dumps(updated, ensure_ascii=False)
                         ),
@@ -700,7 +700,7 @@ class ChatService:
                             norm = []
                             for e in ai_estimates:
                                 pd = _num(e.get("person_days", 0.0), 0.0)
-                                amt = _num(e.get("amount", pd * settings.DAILY_UNIT_COST), 0.0)
+                                amt = _num(e.get("amount", pd * settings.get_daily_unit_cost()), 0.0)
                                 norm.append({
                                     "deliverable_name": e.get("deliverable_name"),
                                     "deliverable_description": e.get("deliverable_description"),

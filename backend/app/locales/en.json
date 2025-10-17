@@ -69,7 +69,7 @@
     "label_scope_keywords": "Exclude Keywords",
     "placeholder_scope_keywords": "e.g., test,manual",
     "placeholder_scope_keywords_input": "Exclude Keywords (comma-separated)",
-    "unit_yen": "JPY",
+    "unit_yen": "$",
     "unit_percent": "%",
     "unit_person_days": "person-days",
     "label_proposals": "Adjustment Proposals",

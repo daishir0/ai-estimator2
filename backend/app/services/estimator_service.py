@@ -13,7 +13,7 @@ class EstimatorService:
     def __init__(self):
         self.client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
         self.model = settings.OPENAI_MODEL
-        self.daily_unit_cost = settings.DAILY_UNIT_COST
+        self.daily_unit_cost = settings.get_daily_unit_cost()
         
     def generate_estimates(self, deliverables: List[Dict[str, str]], 
                           system_requirements: str,
@@ -147,7 +147,7 @@ class EstimatorService:
     def calculate_totals(self, estimates: List[Dict[str, Any]]) -> Dict[str, float]:
         """合計金額、税額、総額を計算する"""
         subtotal = sum(estimate['amount'] for estimate in estimates)
-        tax = subtotal * 0.1  # 10%の税率
+        tax = subtotal * settings.get_tax_rate()
         total = subtotal + tax
         
         return {
