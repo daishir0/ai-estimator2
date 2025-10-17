@@ -196,11 +196,17 @@
       const res = await fetch(`${API_BASE}/api/v1/tasks/${currentTaskId}/result`, { credentials:'include' });
       if (!res.ok) { alert('結果取得に失敗しました: ' + (await res.text())); return; }
       const data = await res.json();
-      const tbody = document.getElementById('result-body');
-      const cards = document.getElementById('result-cards');
-      tbody.innerHTML = '';
-      cards.innerHTML = '';
-      data.estimates.forEach(item => {
+
+      // 合計情報を更新
+      document.getElementById('subtotal').textContent = Math.round(data.subtotal).toLocaleString();
+      document.getElementById('tax').textContent = Math.round(data.tax).toLocaleString();
+      document.getElementById('total').textContent = Math.round(data.total).toLocaleString();
+
+      // アコーディオン形式で見積り詳細を表示
+      const accordion = document.getElementById('result-accordion');
+      accordion.innerHTML = '';
+
+      data.estimates.forEach((item, index) => {
         const name = item.deliverable_name || item.name || '';
         const desc = item.deliverable_description || item.description || '';
         const pd = Number(item.person_days || 0).toFixed(1);
@@ -209,48 +215,102 @@
         const notes = (item.reasoning_notes || "").toString();
         const htmlBreakdown = DOMPurify.sanitize(marked.parse(breakdown));
         const htmlNotes = DOMPurify.sanitize(marked.parse(notes));
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="px-3 py-2">${name}</td>
-          <td class="px-3 py-2 text-slate-600">${desc}</td>
-          <td class="px-3 py-2 text-right tabular-nums">${pd}</td>
-          <td class="px-3 py-2 text-right tabular-nums">${amt}</td>
-          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlBreakdown}</td>
-          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlNotes}</td>`;
-        tbody.appendChild(tr);
 
-        const card = document.createElement('div');
-        card.className = 'rounded-lg border border-slate-200 p-4 bg-white';
-        card.innerHTML = `
-          <div class="font-medium text-slate-900 mb-1">${name}</div>
-          <div class="text-slate-600 text-sm mb-2">${desc}</div>
-          <div class="flex justify-between text-sm">
-            <div class="text-slate-500">工数(人日)</div>
-            <div class="font-semibold tabular-nums">${pd}</div>
+        const accordionItem = document.createElement('div');
+        accordionItem.className = 'rounded-lg border border-slate-200 bg-white overflow-hidden';
+        accordionItem.dataset.accordionIndex = index;
+
+        accordionItem.innerHTML = `
+          <button class="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors" onclick="toggleAccordion(${index})">
+            <div class="flex-1 text-left">
+              <div class="flex items-center gap-3">
+                <div class="font-medium text-slate-900">${name}</div>
+                <div class="text-sm text-slate-600">${desc}</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 text-sm">
+              <div class="text-right">
+                <div class="text-slate-500 text-xs">工数</div>
+                <div class="font-semibold tabular-nums">${pd}人日</div>
+              </div>
+              <div class="text-right">
+                <div class="text-slate-500 text-xs">金額</div>
+                <div class="font-semibold tabular-nums">${amt}円</div>
+              </div>
+              <svg class="w-5 h-5 text-slate-400 transition-transform duration-200 accordion-icon-${index}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </div>
+          </button>
+          <div class="accordion-content-${index} hidden px-4 py-3 border-t border-slate-200 bg-slate-50">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <div class="text-sm font-semibold text-slate-900 mb-2">工数内訳</div>
+                <div class="text-sm text-slate-700 prose prose-slate max-w-none">${htmlBreakdown}</div>
+              </div>
+              <div>
+                <div class="text-sm font-semibold text-slate-900 mb-2">根拠・備考</div>
+                <div class="text-sm text-slate-700 prose prose-slate max-w-none">${htmlNotes}</div>
+              </div>
+            </div>
           </div>
-          <div class="flex justify-between text-sm mt-1">
-            <div class="text-slate-500">金額</div>
-            <div class="font-semibold tabular-nums">${amt}</div>
-          </div>
-          ${breakdown ? `<div class="text-slate-600 text-xs mt-3"><div class="font-semibold mb-1">工数内訳</div><div class="prose prose-slate max-w-none">${htmlBreakdown}</div></div>` : ''}
-          ${notes ? `<div class="text-slate-600 text-xs mt-2"><div class="font-semibold mb-1">根拠・備考</div><div class="prose prose-slate max-w-none">${htmlNotes}</div></div>` : ''}
         `;
-        cards.appendChild(card);
+
+        accordion.appendChild(accordionItem);
       });
-      document.getElementById('subtotal').textContent = Math.round(data.subtotal).toLocaleString();
-      document.getElementById('tax').textContent = Math.round(data.tax).toLocaleString();
-      document.getElementById('total').textContent = Math.round(data.total).toLocaleString();
-      // 旧実装の<a id="download">は存在しないためhref設定を削除
+
+      // ダウンロードボタンを有効化
       const dlBtn = document.getElementById('downloadBtn');
       if (dlBtn) { dlBtn.disabled = false; dlBtn.classList.remove('opacity-50','pointer-events-none'); }
+
+      // 結果セクションを表示
       document.getElementById('step-result').classList.remove('hidden');
       toast('見積りが完了しました', 'success');
+
+      // チャートを描画
       renderChart(data.estimates);
+
+      // 見積りデータを保存
       window.initialEstimates = JSON.parse(JSON.stringify(data.estimates||[]));
       window.lastEstimates = JSON.parse(JSON.stringify(data.estimates||[]));
+
       // 見積り調整エリアを表示
       const adjust = document.getElementById('adjust');
       if (adjust) adjust.classList.remove('hidden');
+    }
+
+    // アコーディオンの開閉制御
+    function toggleAccordion(index) {
+      const content = document.querySelector(`.accordion-content-${index}`);
+      const icon = document.querySelector(`.accordion-icon-${index}`);
+
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        content.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    // 全アコーディオンの開閉制御
+    function toggleAllAccordions(open) {
+      const accordion = document.getElementById('result-accordion');
+      if (!accordion) return;
+
+      const items = accordion.querySelectorAll('[data-accordion-index]');
+      items.forEach((item, index) => {
+        const content = document.querySelector(`.accordion-content-${index}`);
+        const icon = document.querySelector(`.accordion-icon-${index}`);
+
+        if (open) {
+          content?.classList.remove('hidden');
+          if (icon) icon.style.transform = 'rotate(180deg)';
+        } else {
+          content?.classList.add('hidden');
+          if (icon) icon.style.transform = 'rotate(0deg)';
+        }
+      });
     }
 
     // --- Chart ---
@@ -496,23 +556,9 @@
         <h2 class="text-lg font-semibold text-slate-900">3. 見積り結果</h2>
         <button id="downloadBtn" class="inline-flex items-center bg-slate-900 hover:bg-slate-800 text-white rounded-md px-3 py-2 text-xs font-medium" onclick="downloadExcel()">Excelをダウンロード</button>
       </div>
-      <div class="hidden md:block overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead class="bg-slate-50 text-slate-600">
-            <tr>
-              <th class="px-3 py-2 text-left font-medium">成果物</th>
-              <th class="px-3 py-2 text-left font-medium">説明</th>
-              <th class="px-3 py-2 text-right font-medium">工数(人日)</th>
-              <th class="px-3 py-2 text-right font-medium">金額</th>
-              <th class="px-3 py-2 text-left font-medium">工数内訳</th>
-              <th class="px-3 py-2 text-left font-medium">根拠・備考</th>
-            </tr>
-          </thead>
-          <tbody id="result-body" class="divide-y divide-slate-100 bg-white"></tbody>
-        </table>
-      </div>
-      <div id="result-cards" class="md:hidden grid grid-cols-1 gap-3"></div>
-      <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+      <!-- 合計情報 -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div class="rounded-lg border border-slate-200 p-3 bg-slate-50">
           <div class="text-xs text-slate-500">小計</div>
           <div class="text-lg font-semibold tabular-nums" id="subtotal">-</div>
@@ -526,9 +572,26 @@
           <div class="text-lg font-semibold tabular-nums" id="total">-</div>
         </div>
       </div>
-      <div class="mt-6">
+
+      <!-- 棒グラフ -->
+      <div class="mb-6">
         <canvas id="est-chart" height="120"></canvas>
       </div>
+
+      <!-- アコーディオン制御ボタン -->
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-semibold text-slate-900">成果物別詳細</h3>
+        <div class="flex gap-2">
+          <button onclick="toggleAllAccordions(true)" class="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-100">全て開く</button>
+          <button onclick="toggleAllAccordions(false)" class="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-100">全て閉じる</button>
+        </div>
+      </div>
+
+      <!-- アコーディオン形式の見積り詳細 -->
+      <div id="result-accordion" class="space-y-2"></div>
+
+      <!-- モバイル用カード（非表示） -->
+      <div id="result-cards" class="hidden"></div>
     </section>
 
     <section id="adjust" class="rounded-xl border border-slate-200 bg-white p-5 mt-6 hidden">
@@ -619,11 +682,12 @@
       window.prevEstimates = JSON.parse(JSON.stringify(ests));
       const prevMap = new Map();
       try { (prev||[]).forEach(e => prevMap.set((e.deliverable_name||e.name||''), e)); } catch(_) {}
-      const tbody = document.getElementById('result-body');
-      const cards = document.getElementById('result-cards');
-      tbody.innerHTML=''; cards.innerHTML='';
-      let changedCount = 0;
-      ests.forEach(item => {
+
+      // アコーディオン形式で更新
+      const accordion = document.getElementById('result-accordion');
+      accordion.innerHTML = '';
+
+      ests.forEach((item, index) => {
         const name = item.deliverable_name || item.name || '';
         const desc = item.deliverable_description || item.description || '';
         const pdNum = Number(item.person_days || 0);
@@ -634,6 +698,7 @@
         const notes = (item.reasoning_notes || '').toString();
         const htmlBreakdown = DOMPurify.sanitize(marked.parse(breakdown));
         const htmlNotes = DOMPurify.sanitize(marked.parse(notes));
+
         const prevItem = prevMap.get(name);
         let deltaPd = 0, deltaAmt = 0;
         if (prevItem) {
@@ -641,39 +706,51 @@
           deltaAmt = Math.round(amtNum - Math.round(prevItem.amount||0));
         }
         const changed = Math.abs(deltaPd) >= 0.1 || Math.abs(deltaAmt) >= 1;
-        if (changed) changedCount++;
         const pdBadge = changed && Math.abs(deltaPd) >= 0.1 ? `<span class="ml-2 text-xs ${deltaPd>0?'text-rose-600':'text-emerald-600'}">${deltaPd>0?'+':''}${deltaPd.toFixed(1)}</span>` : '';
         const amtBadge = changed && Math.abs(deltaAmt) >= 1 ? `<span class="ml-2 text-xs ${deltaAmt>0?'text-rose-600':'text-emerald-600'}">${deltaAmt>0?'+':''}${deltaAmt.toLocaleString()}</span>` : '';
         const rowDiffClass = changed ? (deltaAmt>0 || deltaPd>0 ? 'diff-down' : 'diff-up') : '';
 
-        const tr = document.createElement('tr');
-        tr.className = rowDiffClass;
-        tr.innerHTML = `
-          <td class="px-3 py-2">${name}</td>
-          <td class="px-3 py-2 text-slate-600">${desc}</td>
-          <td class="px-3 py-2 text-right tabular-nums">${pd}${pdBadge}</td>
-          <td class="px-3 py-2 text-right tabular-nums">${amt}${amtBadge}</td>
-          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlBreakdown}</td>
-          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlNotes}</td>`;
-        tbody.appendChild(tr);
+        const accordionItem = document.createElement('div');
+        accordionItem.className = `rounded-lg border border-slate-200 bg-white overflow-hidden ${rowDiffClass}`;
+        accordionItem.dataset.accordionIndex = index;
 
-        const card = document.createElement('div');
-        card.className = 'rounded-lg border border-slate-200 p-4 bg-white';
-        card.innerHTML = `
-          <div class="font-medium text-slate-900 mb-1">${name}</div>
-          <div class="text-slate-600 text-sm mb-2">${desc}</div>
-          <div class="flex justify-between text-sm">
-            <div class="text-slate-500">工数(人日)</div>
-            <div class="font-semibold tabular-nums">${pd} ${pdBadge}</div>
+        accordionItem.innerHTML = `
+          <button class="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors" onclick="toggleAccordion(${index})">
+            <div class="flex-1 text-left">
+              <div class="flex items-center gap-3">
+                <div class="font-medium text-slate-900">${name}</div>
+                <div class="text-sm text-slate-600">${desc}</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 text-sm">
+              <div class="text-right">
+                <div class="text-slate-500 text-xs">工数</div>
+                <div class="font-semibold tabular-nums">${pd}人日${pdBadge}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-slate-500 text-xs">金額</div>
+                <div class="font-semibold tabular-nums">${amt}円${amtBadge}</div>
+              </div>
+              <svg class="w-5 h-5 text-slate-400 transition-transform duration-200 accordion-icon-${index}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </div>
+          </button>
+          <div class="accordion-content-${index} hidden px-4 py-3 border-t border-slate-200 bg-slate-50">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <div class="text-sm font-semibold text-slate-900 mb-2">工数内訳</div>
+                <div class="text-sm text-slate-700 prose prose-slate max-w-none">${htmlBreakdown}</div>
+              </div>
+              <div>
+                <div class="text-sm font-semibold text-slate-900 mb-2">根拠・備考</div>
+                <div class="text-sm text-slate-700 prose prose-slate max-w-none">${htmlNotes}</div>
+              </div>
+            </div>
           </div>
-          <div class="flex justify-between text-sm mt-1">
-            <div class="text-slate-500">金額</div>
-            <div class="font-semibold tabular-nums">${amt} ${amtBadge}</div>
-          </div>
-          ${breakdown ? `<div class="text-slate-600 text-xs mt-3"><div class="font-semibold mb-1">工数内訳</div><div class="prose prose-slate max-w-none">${htmlBreakdown}</div></div>` : ''}
-          ${notes ? `<div class="text-slate-600 text-xs mt-2"><div class="font-semibold mb-1">根拠・備考</div><div class="prose prose-slate max-w-none">${htmlNotes}</div></div>` : ''}
         `;
-        cards.appendChild(card);
+
+        accordion.appendChild(accordionItem);
       });
 
       // 合計更新
