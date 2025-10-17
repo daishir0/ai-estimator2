@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
 
+    # Language Setting
+    LANGUAGE: str = "ja"  # Default: Japanese (ja or en)
+
     # Server
     HOST: str = "127.0.0.1"
     PORT: int = 8009

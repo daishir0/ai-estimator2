@@ -2,6 +2,8 @@
 import openai
 from typing import List, Dict
 from app.core.config import settings
+from app.prompts.question_prompts import get_question_generation_prompt, get_system_prompt
+from app.core.i18n import t
 
 
 class QuestionService:
@@ -21,28 +23,7 @@ class QuestionService:
             [f"- {item['name']}: {item['description']}" for item in deliverables]
         )
 
-        prompt = f"""
-あなたは経験豊富なシステム開発プロジェクトマネージャーです。
-以下の成果物とシステム要件を基に、見積り精度を向上させるための重要な質問を3つ生成してください。
-
-【成果物一覧】
-{deliverable_list}
-
-【システム要件】
-{system_requirements}
-
-【指示】
-1. 見積り精度向上に最も重要な3つの質問を作成してください
-2. 技術的な複雑さ、スケジュール、リソースに関する質問を含めてください
-3. 具体的で答えやすい質問にしてください
-4. 各質問は一行で簡潔に記載してください
-5. 質問番号は付けず、質問文のみを出力してください
-
-出力形式：
-質問1の内容
-質問2の内容
-質問3の内容
-"""
+        prompt = get_question_generation_prompt(deliverable_list, system_requirements)
 
         try:
             response = self.client.chat.completions.create(
@@ -50,7 +31,7 @@ class QuestionService:
                 messages=[
                     {
                         "role": "system",
-                        "content": "あなたは経験豊富なシステム開発プロジェクトマネージャーです。",
+                        "content": get_system_prompt(),
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -74,7 +55,7 @@ class QuestionService:
     def _get_default_questions(self) -> List[str]:
         """デフォルトの質問を返す"""
         return [
-            "想定しているユーザー数とアクセス頻度はどの程度ですか？",
-            "システムの稼働環境（オンプレミス、クラウド等）はどちらを想定していますか？",
-            "外部システムとの連携や既存システムとの統合は必要ですか？",
+            t('defaults.question1'),
+            t('defaults.question2'),
+            t('defaults.question3'),
         ]

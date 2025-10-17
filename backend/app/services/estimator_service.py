@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import traceback
 import time
+from app.prompts.estimate_prompts import get_estimate_prompt, get_system_prompt
 
 class EstimatorService:
     def __init__(self):
@@ -75,59 +76,20 @@ class EstimatorService:
                                    system_requirements: str,
                                    qa_pairs: List[Dict[str, str]]) -> Dict[str, Any]:
         """単一成果物の見積りを生成する"""
-        
+
         # 質問と回答を整理
         qa_text = "\n".join([
             f"質問: {qa['question']}\n回答: {qa['answer']}"
             for qa in qa_pairs
         ])
-        
-        prompt = f"""
-あなたは経験豊富なシステム開発プロジェクトマネージャーです。
-以下の情報を基に、成果物の開発工数を見積もってください。
 
-【成果物情報】
-名称: {deliverable['name']}
-説明: {deliverable['description']}
-
-【システム要件】
-{system_requirements}
-
-【追加情報】
-{qa_text}
-
-【厳守事項】
-- 単位は必ず「人日」を使用し、数字の桁を間違えないこと（例: 4.5人日を45日と書かない）
-- reasoning_breakdown内のすべての数量表記も「人日」とし、小数1桁を維持する
-
-【出力形式】
-次のJSONのみをコードブロックなしで返す：
-{{
-  "person_days": 小数1桁の数値（例: 4.5）,
-  "reasoning_breakdown": "工数内訳（Markdown可）。工程別の人日内訳を箇条書きで記載。",
-  "reasoning_notes": "根拠・備考（Markdown可）。見積りの前提条件、リスク、補足説明など。"
-}}
-
-【reasoning_breakdown のフォーマット】
-以下の統一フォーマットで記載してください：
-- 要件定義: X.X人日
-- 設計: X.X人日
-- 実装: X.X人日
-- テスト: X.X人日
-- ドキュメント作成: X.X人日
-
-【見積り範囲】
-- 設計・実装・テスト・ドキュメント作成を含める
-- 成果物の複雑さを考慮した現実的な工数
-- reasoning_breakdownには工程別の数値内訳を統一フォーマットで記載
-- reasoning_notesには前提条件やリスク、注意点を記載
-"""
+        prompt = get_estimate_prompt(deliverable, system_requirements, qa_text)
         
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "あなたは経験豊富なシステム開発プロジェクトマネージャーです。"},
+                    {"role": "system", "content": get_system_prompt()},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=800,

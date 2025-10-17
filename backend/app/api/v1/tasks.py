@@ -23,6 +23,7 @@ from app.services.input_service import InputService
 from app.services.chat_service import ChatService
 from app.core.config import settings
 from app.schemas.chat import ChatRequest, ChatResponse
+from app.core.i18n import get_i18n
 
 router = APIRouter()
 
@@ -462,3 +463,13 @@ async def apply_adjusted_estimates(task_id: str, req: ApplyRequest, db: Session 
         total=totals['total'],
         error_message=task.error_message,
     )
+
+
+@router.get("/translations")
+async def get_translations():
+    """フロントエンド用の翻訳データを返す"""
+    i18n = get_i18n()
+    return {
+        "language": i18n.language,
+        "translations": i18n.translations
+    }

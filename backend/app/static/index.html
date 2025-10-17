@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AI見積りシステム Web</title>
+  <title data-i18n="ui.app_title">AI見積りシステム Web</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Markdown render + sanitize -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -43,6 +43,7 @@
     .diff-up { animation: flashUp 0.9s ease-in-out 2; }
     .diff-down { animation: flashDown 0.9s ease-in-out 2; }
   </style>
+  <script src="/static/i18n.js"></script>
   <script>
     const API_BASE = `${location.origin}`;
     let currentTaskId = null;
@@ -73,11 +74,11 @@
 
         const moreBtn = document.createElement('button');
         moreBtn.className = 'px-2 py-1 rounded bg-white/20 hover:bg-white/30';
-        moreBtn.textContent = '詳細';
+        moreBtn.textContent = t('ui.button_details');
 
         const copyBtn = document.createElement('button');
         copyBtn.className = 'px-2 py-1 rounded bg-white/20 hover:bg-white/30';
-        copyBtn.textContent = 'コピー';
+        copyBtn.textContent = t('ui.button_copy');
 
         const pre = document.createElement('pre');
         pre.className = 'mt-2 max-h-64 overflow-auto text-white/90 text-[11px] border-t border-white/20 pt-2';
@@ -88,7 +89,7 @@
           pre.style.display = (pre.style.display === 'none') ? 'block' : 'none';
         };
         copyBtn.onclick = async () => {
-          try { await navigator.clipboard.writeText(pre.textContent); moreBtn.textContent = '詳細'; } catch(e) {}
+          try { await navigator.clipboard.writeText(pre.textContent); moreBtn.textContent = t('ui.button_details'); } catch(e) {}
         };
 
         btnRow.appendChild(moreBtn);
@@ -135,9 +136,9 @@
       const tbody = document.getElementById('form-tbody');
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td class="py-2 px-2"><input type="text" class="w-full rounded border-slate-300 text-sm" placeholder="例: 要件定義書" /></td>
-        <td class="py-2 px-2"><input type="text" class="w-full rounded border-slate-300 text-sm" placeholder="例: システム全体の要件定義" /></td>
-        <td class="py-2 px-2 text-center"><button onclick="removeFormRow(this)" class="text-slate-400 hover:text-rose-600 text-xs">削除</button></td>
+        <td class="py-2 px-2"><input type="text" class="w-full rounded border-slate-300 text-sm" placeholder="${t('ui.placeholder_deliverable_name')}" /></td>
+        <td class="py-2 px-2"><input type="text" class="w-full rounded border-slate-300 text-sm" placeholder="${t('ui.placeholder_deliverable_desc')}" /></td>
+        <td class="py-2 px-2 text-center"><button onclick="removeFormRow(this)" class="text-slate-400 hover:text-rose-600 text-xs">${t('ui.button_delete')}</button></td>
       `;
       tbody.appendChild(row);
     }
@@ -147,7 +148,7 @@
       if (tbody.querySelectorAll('tr').length > 1) {
         btn.closest('tr').remove();
       } else {
-        toast('最低1行は必要です', 'error');
+        toast(t('ui.error_min_one_row'), 'error');
       }
     }
 
@@ -162,11 +163,11 @@
         // 入力モードに応じた処理
         if (currentInputMode === 'excel') {
           const f = document.getElementById('file-excel');
-          if (!f.files[0]) { alert('Excelファイルを選択してください'); showSpinner(false); return; }
+          if (!f.files[0]) { alert(t('ui.alert_select_excel')); showSpinner(false); return; }
           fd.append('file', f.files[0]);
         } else if (currentInputMode === 'csv') {
           const f = document.getElementById('file-csv');
-          if (!f.files[0]) { alert('CSVファイルを選択してください'); showSpinner(false); return; }
+          if (!f.files[0]) { alert(t('ui.alert_select_csv')); showSpinner(false); return; }
           fd.append('file', f.files[0]);
         } else if (currentInputMode === 'form') {
           // Webフォームからデータ収集
@@ -182,7 +183,7 @@
           });
 
           if (deliverables.length === 0) {
-            alert('成果物を1件以上入力してください');
+            alert(t('ui.error_no_deliverables'));
             showSpinner(false);
             return;
           }
@@ -192,8 +193,8 @@
 
         const res = await fetch(`${API_BASE}/api/v1/tasks`, { method: 'POST', body: fd, credentials:'include' });
         if (!res.ok) {
-          const t = await res.text().catch(()=> '');
-          toast('タスク作成に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          const txt = await res.text().catch(()=> '');
+          toast(t('ui.toast_task_create_failed'), 'error', { details: `${res.status} ${res.statusText}\n${txt}` });
           return;
         }
         const task = await res.json();
@@ -202,7 +203,7 @@
         document.getElementById('step-qa').classList.remove('hidden');
         await loadQuestions();
       } catch (e) {
-        toast('タスク作成に失敗しました', 'error', { details: e?.message||String(e) });
+        toast(t('ui.toast_task_create_failed'), 'error', { details: e?.message||String(e) });
       } finally { showSpinner(false); }
     }
 
@@ -212,8 +213,8 @@
       try {
         const res = await fetch(`${API_BASE}/api/v1/tasks/${currentTaskId}/questions`, { credentials:'include' });
         if (!res.ok) {
-          const t = await res.text().catch(()=> '');
-          toast('質問取得に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          const txt = await res.text().catch(()=> '');
+          toast(t('ui.toast_question_load_failed'), 'error', { details: `${res.status} ${res.statusText}\n${txt}` });
           return;
         }
         const qs = await res.json();
@@ -223,16 +224,16 @@
           const wrap = document.createElement('div');
           wrap.className = 'rounded-lg border border-slate-200 p-4 bg-white';
           wrap.innerHTML = `
-            <div class="text-sm text-slate-500 mb-1">質問${i+1}</div>
+            <div class="text-sm text-slate-500 mb-1">${t('ui.label_question')}${i+1}</div>
             <div class="text-slate-800 font-medium mb-3">${q}</div>
-            <label class="text-slate-600 text-sm">回答</label>
+            <label class="text-slate-600 text-sm">${t('ui.label_answer')}</label>
             <textarea rows="2" data-qa-index="${i}" data-question="${q.replace(/"/g,'&quot;')}"
               class="mt-1 w-full rounded border-slate-300 focus:border-brand-500 focus:ring-brand-500"></textarea>
           `;
           container.appendChild(wrap);
         });
       } catch (e) {
-        toast('質問取得に失敗しました', 'error', { details: e?.message||String(e) });
+        toast(t('ui.toast_question_load_failed'), 'error', { details: e?.message||String(e) });
       } finally { showSpinner(false); }
     }
 
@@ -251,20 +252,20 @@
           body: JSON.stringify(qa_pairs), credentials:'include'
         });
         if (!res.ok) {
-          const t = await res.text().catch(()=> '');
-          toast('見積り実行に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          const txt = await res.text().catch(()=> '');
+          toast(t('ui.toast_estimate_execute_failed'), 'error', { details: `${res.status} ${res.statusText}\n${txt}` });
           return;
         }
         await loadResult();
       } catch (e) {
-        toast('見積り実行に失敗しました', 'error', { details: e?.message||String(e) });
+        toast(t('ui.toast_estimate_execute_failed'), 'error', { details: e?.message||String(e) });
       } finally { showSpinner(false); }
     }
 
     async function loadResult() {
       if (!currentTaskId) return;
       const res = await fetch(`${API_BASE}/api/v1/tasks/${currentTaskId}/result`, { credentials:'include' });
-      if (!res.ok) { alert('結果取得に失敗しました: ' + (await res.text())); return; }
+      if (!res.ok) { alert(t('ui.alert_result_load_failed') + (await res.text())); return; }
       const data = await res.json();
 
       // 合計情報を更新
@@ -335,7 +336,7 @@
 
       // 結果セクションを表示
       document.getElementById('step-result').classList.remove('hidden');
-      toast('見積りが完了しました', 'success');
+      toast(t('ui.message_estimate_completed'), 'success');
 
       // チャートを描画
       renderChart(data.estimates);
@@ -436,8 +437,8 @@
     }
     async function quickAction(intent, params) {
       if (!currentTaskId) return;
-      function parseNumberLike(s, allowFloat=false){ if(s==null) return NaN; const t=String(s).replace(/[,￥円\s]/g,'').replace('%',''); const n=allowFloat?parseFloat(t):parseInt(t,10); return isNaN(n)?NaN:n; }
-      if (intent === 'fit_budget') { const raw=document.getElementById('qa-cap').value; const cap=parseNumberLike(raw,false); if(!cap||cap<=0){ toast('上限金額を正しく入力してください','error'); return;} params={cap}; } else if (intent==='unit_cost_change'){ const raw=document.getElementById('qa-unit').value; const unit_cost=parseNumberLike(raw,false); if(!unit_cost||unit_cost<=0){ toast('単価を正しく入力してください','error'); return;} params={unit_cost}; } else if (intent==='risk_buffer'){ const raw=document.getElementById('qa-risk').value; const percent=parseNumberLike(raw,true); if(isNaN(percent)){ toast('リスク%を正しく入力してください','error'); return;} params={percent}; }
+      function parseNumberLike(s, allowFloat=false){ if(s==null) return NaN; const txt=String(s).replace(/[,￥円\s]/g,'').replace('%',''); const n=allowFloat?parseFloat(txt):parseInt(txt,10); return isNaN(n)?NaN:n; }
+      if (intent === 'fit_budget') { const raw=document.getElementById('qa-cap').value; const cap=parseNumberLike(raw,false); if(!cap||cap<=0){ toast(t('ui.toast_enter_budget_cap'),'error'); return;} params={cap}; } else if (intent==='unit_cost_change'){ const raw=document.getElementById('qa-unit').value; const unit_cost=parseNumberLike(raw,false); if(!unit_cost||unit_cost<=0){ toast(t('ui.toast_enter_unit_cost'),'error'); return;} params={unit_cost}; } else if (intent==='risk_buffer'){ const raw=document.getElementById('qa-risk').value; const percent=parseNumberLike(raw,true); if(isNaN(percent)){ toast(t('ui.toast_enter_risk_percent'),'error'); return;} params={percent}; }
       if (!currentTaskId) return;
       // sanitize known params
       if (intent === 'fit_budget') {
@@ -464,8 +465,8 @@
           body: JSON.stringify({ intent, params, estimates: (window.lastEstimates||[]) }), credentials:'include'
         });
         if (!res.ok) {
-          const t = await res.text().catch(()=> '');
-          toast('見積り調整に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          const txt = await res.text().catch(()=> '');
+          toast(t('ui.toast_estimate_adjust_failed'), 'error', { details: `${res.status} ${res.statusText}\n${txt}` });
           return;
         }
         const data = await res.json();
@@ -478,15 +479,15 @@
         } catch(_){}
         updateEstimatesView(data);
         if (data && data.suggestions) renderSuggestions(data.suggestions);
-        toast('見積りを調整しました', 'success');
-      } catch (e) { toast('見積り調整に失敗しました', 'error', { details: e?.message||String(e) }); }
+        toast(t('ui.toast_estimate_adjusted'), 'success');
+      } catch (e) { toast(t('ui.toast_estimate_adjust_failed'), 'error', { details: e?.message||String(e) }); }
       finally { showSpinner(false); }
     }
 
     async function sendChat() {
       if (!currentTaskId) return;
       const msg = document.getElementById('chat-input').value.trim();
-      if (!msg) { toast('メッセージを入力してください', 'error'); return; }
+      if (!msg) { toast(t('ui.toast_enter_message'), 'error'); return; }
       showSpinner(true);
       try {
         console.log('[UI] sendChat start', { taskId: currentTaskId, msg });
@@ -495,8 +496,8 @@
           body: JSON.stringify({ message: msg, estimates: (window.lastEstimates||[]) }), credentials:'include'
         });
         if (!res.ok) {
-          const t = await res.text().catch(()=> '');
-          toast('送信に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          const txt = await res.text().catch(()=> '');
+          toast(t('ui.toast_send_failed'), 'error', { details: `${res.status} ${res.statusText}\n${txt}` });
           return;
         }
         const data = await res.json();
@@ -521,7 +522,7 @@
 
         if (data && data.suggestions) renderSuggestions(data.suggestions);
         document.getElementById('chat-input').value='';
-      } catch (e) { toast('送信に失敗しました', 'error', { details: e?.message||String(e) }); }
+      } catch (e) { toast(t('ui.toast_send_failed'), 'error', { details: e?.message||String(e) }); }
       finally { showSpinner(false); }
     }
 
@@ -589,19 +590,19 @@
         console.log(`[UI] renderProposals: ${proposals.length} proposals displayed`);
       } catch (e) {
         console.error('[UI] renderProposals error:', e);
-        toast('提案の表示に失敗しました', 'error', { details: e?.message || String(e) });
+        toast(t('ui.toast_proposal_display_failed'), 'error', { details: e?.message || String(e) });
       }
     }
 
     async function applyProposal(proposalId) {
       if (!currentTaskId) return;
       if (!proposalId) {
-        toast('提案IDが不正です', 'error');
+        toast(t('ui.toast_invalid_proposal_id'), 'error');
         return;
       }
 
       // 確認ダイアログ
-      if (!confirm('この提案を適用しますか？見積内容が更新されます。')) {
+      if (!confirm(t('ui.alert_confirm_apply_proposal'))) {
         return;
       }
 
@@ -621,8 +622,8 @@
         });
 
         if (!res.ok) {
-          const t = await res.text().catch(() => '');
-          toast('提案の適用に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          const txt = await res.text().catch(() => '');
+          toast(t('ui.toast_proposal_apply_failed'), 'error', { details: `${res.status} ${res.statusText}\n${txt}` });
           return;
         }
 
@@ -636,10 +637,10 @@
         // 見積を更新
         updateEstimatesView(data, true);
 
-        toast('提案を適用しました！', 'success');
+        toast(t('ui.message_proposal_applied'), 'success');
       } catch (e) {
         console.error('[UI] applyProposal error:', e);
-        toast('提案の適用に失敗しました', 'error', { details: e?.message || String(e) });
+        toast(t('ui.toast_proposal_apply_failed'), 'error', { details: e?.message || String(e) });
       } finally {
         showSpinner(false);
       }
@@ -672,7 +673,7 @@
           await sendChat();
           return;
         }
-      } catch(e) { toast('提案の適用に失敗しました', 'error', { details: e?.message||String(e) }); }
+      } catch(e) { toast(t('ui.toast_proposal_run_failed'), 'error', { details: e?.message||String(e) }); }
     }
 
     // duplicate updateEstimatesView removed (using enhanced version later)
@@ -681,7 +682,7 @@
     async function applyAdjustments() {
       if (!currentTaskId) return;
       const ests = window.lastEstimates;
-      if (!ests || !ests.length) { toast('先に見積り調整を行ってください', 'error'); return; }
+      if (!ests || !ests.length) { toast(t('ui.toast_estimate_adjust_failed'), 'error'); return; }
       showSpinner(true);
       try {
         const res = await fetch(`${API_BASE}/api/v1/tasks/${currentTaskId}/apply`, {
@@ -691,8 +692,8 @@
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
         updateEstimatesView(data);
-        toast('調整を適用し、Excelを再出力しました', 'success');
-      } catch (e) { toast('適用に失敗しました', 'error'); }
+        toast(t('ui.toast_apply_success'), 'success');
+      } catch (e) { toast(t('ui.toast_apply_failed'), 'error'); }
       finally { showSpinner(false); }
     }
   </script>
@@ -703,41 +704,41 @@
     <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-md bg-brand-600 flex items-center justify-center text-white font-bold">AI</div>
-        <div class="text-slate-900 font-semibold">AI見積りシステム</div>
+        <div class="text-slate-900 font-semibold" data-i18n="ui.app_title">AI見積りシステム</div>
       </div>
-      <div class="hidden sm:block text-slate-500 text-sm">Excelからプロ品質の見積を自動生成</div>
+      <div class="hidden sm:block text-slate-500 text-sm" data-i18n="ui.app_subtitle">Excelからプロ品質の見積を自動生成</div>
     </div>
   </header>
 
   <main class="max-w-6xl mx-auto px-4 py-8">
     <section class="mb-6">
       <div class="rounded-xl bg-gradient-to-r from-brand-800 to-brand-600 text-white p-6">
-        <h1 class="text-2xl sm:text-3xl font-semibold mb-2">見積り作成を、もっと速く正確に。</h1>
-        <p class="text-white/90">Excelの成果物リストをアップロードし、質問に答えるだけ。AIが工数と金額を提示します。</p>
+        <h1 class="text-2xl sm:text-3xl font-semibold mb-2" data-i18n="ui.hero_title">見積り作成を、もっと速く正確に。</h1>
+        <p class="text-white/90" data-i18n="ui.hero_description">Excelの成果物リストをアップロードし、質問に答えるだけ。AIが工数と金額を提示します。</p>
       </div>
     </section>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <section id="step-upload" class="rounded-xl border border-slate-200 bg-white p-5">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg font-semibold text-slate-900">1. 成果物データを入力</h2>
-          <span class="text-xs text-slate-500">タスクID: <span id="taskId">-</span></span>
+          <h2 class="text-lg font-semibold text-slate-900" data-i18n="ui.step1_title">1. 成果物データを入力</h2>
+          <span class="text-xs text-slate-500"><span data-i18n="ui.label_task_id">タスクID:</span> <span id="taskId">-</span></span>
         </div>
 
         <!-- タブ切り替えUI -->
         <div class="flex border-b border-slate-200 mb-4">
-          <button id="tab-excel" onclick="switchTab('excel')" class="px-4 py-2 text-sm font-medium border-b-2 border-brand-600 text-brand-600">Excel</button>
-          <button id="tab-csv" onclick="switchTab('csv')" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900">CSV</button>
-          <button id="tab-form" onclick="switchTab('form')" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900">Webフォーム</button>
+          <button id="tab-excel" onclick="switchTab('excel')" class="px-4 py-2 text-sm font-medium border-b-2 border-brand-600 text-brand-600" data-i18n="ui.tab_excel">Excel</button>
+          <button id="tab-csv" onclick="switchTab('csv')" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900" data-i18n="ui.tab_csv">CSV</button>
+          <button id="tab-form" onclick="switchTab('form')" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900" data-i18n="ui.tab_form">Webフォーム</button>
         </div>
 
         <!-- Excelタブ -->
         <div id="content-excel" class="space-y-4">
           <div>
-            <label class="text-sm text-slate-700">Excelファイル（.xlsx/.xls）</label>
+            <label class="text-sm text-slate-700" data-i18n="ui.label_excel_file">Excelファイル（.xlsx/.xls）</label>
             <input id="file-excel" type="file" accept=".xlsx,.xls" class="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-600 file:text-white hover:file:bg-brand-700" />
             <div class="mt-2">
-              <a href="/api/v1/sample-input" download class="text-xs text-brand-600 hover:underline">サンプルExcelをダウンロード</a>
+              <a href="/api/v1/sample-input" download class="text-xs text-brand-600 hover:underline" data-i18n="ui.button_download_sample">サンプルExcelをダウンロード</a>
             </div>
           </div>
         </div>
@@ -745,10 +746,10 @@
         <!-- CSVタブ -->
         <div id="content-csv" class="space-y-4 hidden">
           <div>
-            <label class="text-sm text-slate-700">CSVファイル（.csv）</label>
+            <label class="text-sm text-slate-700" data-i18n="ui.label_csv_file">CSVファイル（.csv）</label>
             <input id="file-csv" type="file" accept=".csv" class="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-600 file:text-white hover:file:bg-brand-700" />
             <div class="mt-2">
-              <a href="/api/v1/sample-input-csv" download class="text-xs text-brand-600 hover:underline">サンプルCSVをダウンロード</a>
+              <a href="/api/v1/sample-input-csv" download class="text-xs text-brand-600 hover:underline" data-i18n="ui.button_download_sample_csv">サンプルCSVをダウンロード</a>
             </div>
           </div>
         </div>
@@ -759,21 +760,21 @@
             <table class="w-full text-sm" id="form-table">
               <thead>
                 <tr class="border-b border-slate-200">
-                  <th class="text-left py-2 px-2 font-medium text-slate-700">成果物名称</th>
-                  <th class="text-left py-2 px-2 font-medium text-slate-700">説明</th>
+                  <th class="text-left py-2 px-2 font-medium text-slate-700" data-i18n="ui.label_deliverable_name">成果物名称</th>
+                  <th class="text-left py-2 px-2 font-medium text-slate-700" data-i18n="ui.label_deliverable_desc">説明</th>
                   <th class="w-16"></th>
                 </tr>
               </thead>
               <tbody id="form-tbody">
                 <tr>
-                  <td class="py-2 px-2"><input type="text" class="w-full rounded border-slate-300 text-sm" placeholder="例: 要件定義書" /></td>
-                  <td class="py-2 px-2"><input type="text" class="w-full rounded border-slate-300 text-sm" placeholder="例: システム全体の要件定義" /></td>
-                  <td class="py-2 px-2 text-center"><button onclick="removeFormRow(this)" class="text-slate-400 hover:text-rose-600 text-xs">削除</button></td>
+                  <td class="py-2 px-2"><input type="text" class="w-full rounded border-slate-300 text-sm" data-i18n-placeholder="ui.placeholder_deliverable_name" placeholder="例: 要件定義書" /></td>
+                  <td class="py-2 px-2"><input type="text" class="w-full rounded border-slate-300 text-sm" data-i18n-placeholder="ui.placeholder_deliverable_desc" placeholder="例: システム全体の要件定義" /></td>
+                  <td class="py-2 px-2 text-center"><button onclick="removeFormRow(this)" class="text-slate-400 hover:text-rose-600 text-xs" data-i18n="ui.button_delete">削除</button></td>
                 </tr>
               </tbody>
             </table>
             <div class="mt-3">
-              <button onclick="addFormRow()" class="text-sm text-brand-600 hover:text-brand-700 font-medium">+ 成果物を追加</button>
+              <button onclick="addFormRow()" class="text-sm text-brand-600 hover:text-brand-700 font-medium" data-i18n="ui.button_add_deliverable">+ 成果物を追加</button>
             </div>
           </div>
         </div>
@@ -781,43 +782,43 @@
         <!-- システム要件（共通） -->
         <div class="mt-4 space-y-4">
           <div>
-            <label class="text-sm text-slate-700">システム要件（任意）</label>
-            <textarea id="system_requirements" rows="4" class="mt-1 w-full rounded border-slate-300 focus:border-brand-500 focus:ring-brand-500" placeholder="例: Webシステム。最大同時100接続、AWS(ECS/RDS)、Salesforce連携など"></textarea>
+            <label class="text-sm text-slate-700" data-i18n="ui.label_system_requirements">システム要件（任意）</label>
+            <textarea id="system_requirements" rows="4" class="mt-1 w-full rounded border-slate-300 focus:border-brand-500 focus:ring-brand-500" data-i18n-placeholder="ui.placeholder_system_requirements" placeholder="例: Webシステム。最大同時100接続、AWS(ECS/RDS)、Salesforce連携など"></textarea>
           </div>
           <div class="flex items-center gap-3">
-            <button onclick="createTask()" class="inline-flex items-center bg-brand-600 hover:bg-brand-700 text-white rounded-md px-4 py-2 text-sm font-medium">タスク作成</button>
-            <span class="text-xs text-slate-500">アップロード後、自動で質問を生成します</span>
+            <button onclick="createTask()" class="inline-flex items-center bg-brand-600 hover:bg-brand-700 text-white rounded-md px-4 py-2 text-sm font-medium" data-i18n="ui.button_create_task">タスク作成</button>
+            <span class="text-xs text-slate-500" data-i18n="ui.hint_auto_generate_questions">アップロード後、自動で質問を生成します</span>
           </div>
         </div>
       </section>
 
       <section id="step-qa" class="rounded-xl border border-slate-200 bg-white p-5 hidden">
-        <h2 class="text-lg font-semibold text-slate-900 mb-3">2. 質問に回答</h2>
+        <h2 class="text-lg font-semibold text-slate-900 mb-3" data-i18n="ui.step2_title">2. 質問に回答</h2>
         <div id="questions" class="space-y-3"></div>
         <div class="mt-4">
-          <button onclick="submitAnswers()" class="inline-flex items-center bg-brand-600 hover:bg-brand-700 text-white rounded-md px-4 py-2 text-sm font-medium">見積りを実行</button>
+          <button onclick="submitAnswers()" class="inline-flex items-center bg-brand-600 hover:bg-brand-700 text-white rounded-md px-4 py-2 text-sm font-medium" data-i18n="ui.button_submit_answers">見積りを実行</button>
         </div>
       </section>
     </div>
 
     <section id="step-result" class="rounded-xl border border-slate-200 bg-white p-5 mt-6 hidden">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-lg font-semibold text-slate-900">3. 見積り結果</h2>
-        <button id="downloadBtn" class="inline-flex items-center bg-slate-900 hover:bg-slate-800 text-white rounded-md px-3 py-2 text-xs font-medium" onclick="downloadExcel()">Excelをダウンロード</button>
+        <h2 class="text-lg font-semibold text-slate-900" data-i18n="ui.step3_title">3. 見積り結果</h2>
+        <button id="downloadBtn" class="inline-flex items-center bg-slate-900 hover:bg-slate-800 text-white rounded-md px-3 py-2 text-xs font-medium" onclick="downloadExcel()" data-i18n="ui.button_download">Excelをダウンロード</button>
       </div>
 
       <!-- 合計情報 -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div class="rounded-lg border border-slate-200 p-3 bg-slate-50">
-          <div class="text-xs text-slate-500">小計</div>
+          <div class="text-xs text-slate-500" data-i18n="ui.label_subtotal">小計</div>
           <div class="text-lg font-semibold tabular-nums" id="subtotal">-</div>
         </div>
         <div class="rounded-lg border border-slate-200 p-3 bg-slate-50">
-          <div class="text-xs text-slate-500">税額(10%)</div>
+          <div class="text-xs text-slate-500" data-i18n="ui.label_tax">税額(10%)</div>
           <div class="text-lg font-semibold tabular-nums" id="tax">-</div>
         </div>
         <div class="rounded-lg border border-slate-200 p-3 bg-slate-50">
-          <div class="text-xs text-slate-500">総額</div>
+          <div class="text-xs text-slate-500" data-i18n="ui.label_total">総額</div>
           <div class="text-lg font-semibold tabular-nums" id="total">-</div>
         </div>
       </div>
@@ -829,52 +830,52 @@
 
       <!-- 見積り調整 -->
       <div id="adjust" class="mb-6 pb-6 border-b border-slate-200">
-        <h3 class="text-base font-semibold text-slate-900 mb-3">見積り調整</h3>
+        <h3 class="text-base font-semibold text-slate-900 mb-3" data-i18n="ui.label_adjust_title">見積り調整</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="space-y-3">
-            <div class="text-sm font-semibold text-slate-800 mb-1">クイック見積調整（機械的適用）</div>
-            <div class="text-xs text-slate-500 -mt-2 mb-2">現在表示中の見積を前提に、上限予算・単価・リスク・機能除外を連続適用します。</div>
+            <div class="text-sm font-semibold text-slate-800 mb-1" data-i18n="ui.label_quick_adjust">クイック見積調整（機械的適用）</div>
+            <div class="text-xs text-slate-500 -mt-2 mb-2" data-i18n="ui.hint_quick_adjust_description">現在表示中の見積を前提に、上限予算・単価・リスク・機能除外を連続適用します。</div>
             <div class="flex items-center gap-2">
-              <input id="qa-cap" type="number" placeholder="上限金額（円）" class="w-40 rounded border-slate-300" />
-              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('fit_budget',{cap:Number(document.getElementById('qa-cap').value||0)})">上限予算に合わせる</button>
+              <input id="qa-cap" type="number" data-i18n-placeholder="ui.placeholder_budget_cap_input" placeholder="上限金額（円）" class="w-40 rounded border-slate-300" />
+              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('fit_budget',{cap:Number(document.getElementById('qa-cap').value||0)})" data-i18n="ui.button_fit_budget">上限予算に合わせる</button>
             </div>
             <div class="flex items-center gap-2">
-              <input id="qa-unit" type="number" placeholder="単価（円/人日）" class="w-40 rounded border-slate-300" />
-              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('unit_cost_change',{unit_cost:Number(document.getElementById('qa-unit').value||40000)})">単価を変更</button>
+              <input id="qa-unit" type="number" data-i18n-placeholder="ui.placeholder_unit_cost_input" placeholder="単価（円/人日）" class="w-40 rounded border-slate-300" />
+              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('unit_cost_change',{unit_cost:Number(document.getElementById('qa-unit').value||40000)})" data-i18n="ui.button_change_unit_cost">単価を変更</button>
             </div>
             <div class="flex items-center gap-2">
-              <input id="qa-risk" type="number" placeholder="リスク%" class="w-32 rounded border-slate-300" />
-              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('risk_buffer',{percent:Number(document.getElementById('qa-risk').value||10)})">リスクバッファ追加</button>
+              <input id="qa-risk" type="number" data-i18n-placeholder="ui.placeholder_risk_percent_input" placeholder="リスク%" class="w-32 rounded border-slate-300" />
+              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('risk_buffer',{percent:Number(document.getElementById('qa-risk').value||10)})" data-i18n="ui.button_add_risk_buffer">リスクバッファ追加</button>
             </div>
             <div class="flex items-center gap-2">
-              <input id="qa-scope" type="text" placeholder="除外キーワード（,区切り）" class="w-80 rounded border-slate-300" />
-              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('scope_reduce',{keywords:(document.getElementById('qa-scope').value||'').split(',')})">機能を絞る</button>
+              <input id="qa-scope" type="text" data-i18n-placeholder="ui.placeholder_scope_keywords_input" placeholder="除外キーワード（,区切り）" class="w-80 rounded border-slate-300" />
+              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('scope_reduce',{keywords:(document.getElementById('qa-scope').value||'').split(',')})" data-i18n="ui.button_reduce_scope">機能を絞る</button>
             </div>
           </div>
           <div>
-            <div class="text-sm font-semibold text-slate-800 mb-1">AI見積調整（自由入力）</div>
-            <div class="text-xs text-slate-500 -mt-2 mb-2">金額調整の例：「あと30万円ほど安くする案を教えて」「予算があるので100万円アップする案を教えてほしい」</div>
+            <div class="text-sm font-semibold text-slate-800 mb-1" data-i18n="ui.label_ai_adjust">AI見積調整（自由入力）</div>
+            <div class="text-xs text-slate-500 -mt-2 mb-2" data-i18n="ui.hint_ai_adjust_description">金額調整の例：「あと30万円ほど安くする案を教えて」「予算があるので100万円アップする案を教えてほしい」</div>
             <div class="flex gap-2">
-              <input id="chat-input" class="flex-1 rounded border-slate-300" placeholder="例: あと30万円ほど安くする案を教えて" />
-              <button class="px-3 py-2 text-sm rounded bg-brand-600 text-white" onclick="sendChat()">送信</button>
+              <input id="chat-input" class="flex-1 rounded border-slate-300" data-i18n-placeholder="ui.placeholder_chat_input" placeholder="例: あと30万円ほど安くする案を教えて" />
+              <button class="px-3 py-2 text-sm rounded bg-brand-600 text-white" onclick="sendChat()" data-i18n="ui.button_send">送信</button>
             </div>
             <div id="chat-suggestions" class="mt-3 flex flex-wrap gap-2"></div>
             <div id="chat-reply" class="mt-3 text-sm text-slate-700 prose prose-slate max-w-none"></div>
             <div id="chat-proposals" class="mt-4 space-y-3"></div>
           </div>
           <div class="mt-4">
-            <button class="px-4 py-2 text-sm rounded bg-emerald-600 text-white" onclick="applyAdjustments()">調整案を反映（Excel再出力）</button>
-            <button class="px-4 py-2 text-sm rounded bg-slate-200 text-slate-800" onclick="(function(){ if(!window.initialEstimates){ toast('初期見積が見つかりません','error'); return;} const data={ estimates: JSON.parse(JSON.stringify(window.initialEstimates)) }; updateEstimatesView(data); toast('最初の見積内容に戻しました','success'); })()">最初の見積内容に戻す</button>
+            <button class="px-4 py-2 text-sm rounded bg-emerald-600 text-white" onclick="applyAdjustments()" data-i18n="ui.button_apply">調整案を反映（Excel再出力）</button>
+            <button class="px-4 py-2 text-sm rounded bg-slate-200 text-slate-800" onclick="(function(){ if(!window.initialEstimates){ toast(t('ui.toast_initial_estimate_not_found'),'error'); return;} const data={ estimates: JSON.parse(JSON.stringify(window.initialEstimates)) }; updateEstimatesView(data); toast(t('ui.toast_reset_success'),'success'); })()" data-i18n="ui.button_reset">最初の見積内容に戻す</button>
           </div>
         </div>
       </div>
 
       <!-- アコーディオン制御ボタン -->
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-base font-semibold text-slate-900">成果物別詳細</h3>
+        <h3 class="text-base font-semibold text-slate-900" data-i18n="ui.label_deliverable_details">成果物別詳細</h3>
         <div class="flex gap-2">
-          <button onclick="toggleAllAccordions(true)" class="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-100">全て開く</button>
-          <button onclick="toggleAllAccordions(false)" class="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-100">全て閉じる</button>
+          <button onclick="toggleAllAccordions(true)" class="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-100" data-i18n="ui.button_expand_all">全て開く</button>
+          <button onclick="toggleAllAccordions(false)" class="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-100" data-i18n="ui.button_collapse_all">全て閉じる</button>
         </div>
       </div>
 
@@ -892,24 +893,24 @@
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
       </svg>
-      <div class="text-slate-700 text-sm">AIが見積りを作成しています…（1分前後）</div>
+      <div class="text-slate-700 text-sm" data-i18n="ui.loading_estimate_in_progress">AIが見積りを作成しています…（1分前後）</div>
     </div>
   </div>
   <script>
     // Global error handlers to surface JS errors in UI
     window.addEventListener('error', (ev) => {
-      try { toast('スクリプトエラーが発生しました', 'error', { details: `${ev.message}\n${ev.filename}:${ev.lineno}:${ev.colno}` }); } catch(_) {}
+      try { toast(t('ui.toast_script_error'), 'error', { details: `${ev.message}\n${ev.filename}:${ev.lineno}:${ev.colno}` }); } catch(_) {}
     });
     window.addEventListener('unhandledrejection', (ev) => {
       try { const msg = (ev.reason && (ev.reason.stack||ev.reason.message)) || String(ev.reason);
-        toast('未処理のエラーが発生しました', 'error', { details: msg }); } catch(_) {}
+        toast(t('ui.toast_unhandled_error'), 'error', { details: msg }); } catch(_) {}
     });
     async function downloadExcel(){
       try {
-        if (!currentTaskId) { toast('タスクが未作成です', 'error'); return; }
+        if (!currentTaskId) { toast(t('ui.toast_task_not_created'), 'error'); return; }
         const url = `${API_BASE}/api/v1/tasks/${currentTaskId}/download`;
         const res = await fetch(url, { credentials:'include' });
-        if(!res.ok) { const t=await res.text().catch(()=> ''); throw new Error(`${res.status} ${res.statusText}\n${t}`); }
+        if(!res.ok) { const txt=await res.text().catch(()=> ''); throw new Error(`${res.status} ${res.statusText}\n${txt}`); }
         const blob = await res.blob();
         const a = document.createElement('a');
         const objectUrl = URL.createObjectURL(blob);
@@ -919,8 +920,8 @@
         a.click();
         a.remove();
         URL.revokeObjectURL(objectUrl);
-        toast('Excelのダウンロードを開始しました', 'success');
-      } catch(e){ toast('Excelのダウンロードに失敗しました', 'error', { details: e?.message||String(e) }); }
+        toast(t('ui.toast_download_started'), 'success');
+      } catch(e){ toast(t('ui.toast_download_failed'), 'error', { details: e?.message||String(e) }); }
     }
   </script>
   <script>
