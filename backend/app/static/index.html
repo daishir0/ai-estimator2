@@ -269,9 +269,9 @@
       const data = await res.json();
 
       // 合計情報を更新
-      document.getElementById('subtotal').textContent = Math.round(data.subtotal).toLocaleString();
-      document.getElementById('tax').textContent = Math.round(data.tax).toLocaleString();
-      document.getElementById('total').textContent = Math.round(data.total).toLocaleString();
+      document.getElementById('subtotal').textContent = Math.round(data.subtotal).toLocaleString() + t('ui.unit_yen');
+      document.getElementById('tax').textContent = Math.round(data.tax).toLocaleString() + t('ui.unit_yen');
+      document.getElementById('total').textContent = Math.round(data.total).toLocaleString() + t('ui.unit_yen');
 
       // アコーディオン形式で見積り詳細を表示
       const accordion = document.getElementById('result-accordion');
@@ -301,12 +301,12 @@
             </div>
             <div class="flex items-center gap-4 text-sm">
               <div class="text-right">
-                <div class="text-slate-500 text-xs">工数</div>
-                <div class="font-semibold tabular-nums">${pd}人日</div>
+                <div class="text-slate-500 text-xs">${t('ui.label_person_days')}</div>
+                <div class="font-semibold tabular-nums">${pd}${t('ui.unit_person_days')}</div>
               </div>
               <div class="text-right">
-                <div class="text-slate-500 text-xs">金額</div>
-                <div class="font-semibold tabular-nums">${amt}円</div>
+                <div class="text-slate-500 text-xs">${t('ui.label_amount')}</div>
+                <div class="font-semibold tabular-nums">${amt}${t('ui.unit_yen')}</div>
               </div>
               <svg class="w-5 h-5 text-slate-400 transition-transform duration-200 accordion-icon-${index}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -316,11 +316,11 @@
           <div class="accordion-content-${index} hidden px-4 py-3 border-t border-slate-200 bg-slate-50">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <div class="text-sm font-semibold text-slate-900 mb-2">工数内訳</div>
+                <div class="text-sm font-semibold text-slate-900 mb-2">${t('ui.label_reasoning_breakdown')}</div>
                 <div class="text-sm text-slate-700 prose prose-slate max-w-none">${htmlBreakdown}</div>
               </div>
               <div>
-                <div class="text-sm font-semibold text-slate-900 mb-2">根拠・備考</div>
+                <div class="text-sm font-semibold text-slate-900 mb-2">${t('ui.label_reasoning_notes')}</div>
                 <div class="text-sm text-slate-700 prose prose-slate max-w-none">${htmlNotes}</div>
               </div>
             </div>
@@ -783,7 +783,7 @@
         <div class="mt-4 space-y-4">
           <div>
             <label class="text-sm text-slate-700" data-i18n="ui.label_system_requirements">システム要件（任意）</label>
-            <textarea id="system_requirements" rows="4" class="mt-1 w-full rounded border-slate-300 focus:border-brand-500 focus:ring-brand-500" data-i18n-placeholder="ui.placeholder_system_requirements" placeholder="例: Webシステム。最大同時100接続、AWS(ECS/RDS)、Salesforce連携など"></textarea>
+            <textarea id="system_requirements" rows="8" class="mt-1 w-full rounded border-slate-300 focus:border-brand-500 focus:ring-brand-500" data-i18n-placeholder="ui.placeholder_system_requirements" placeholder="例: Webシステム。最大同時100接続、AWS(ECS/RDS)、Salesforce連携など"></textarea>
           </div>
           <div class="flex items-center gap-3">
             <button onclick="createTask()" class="inline-flex items-center bg-brand-600 hover:bg-brand-700 text-white rounded-md px-4 py-2 text-sm font-medium" data-i18n="ui.button_create_task">タスク作成</button>
@@ -856,8 +856,8 @@
             <div class="text-sm font-semibold text-slate-800 mb-1" data-i18n="ui.label_ai_adjust">AI見積調整（自由入力）</div>
             <div class="text-xs text-slate-500 -mt-2 mb-2" data-i18n="ui.hint_ai_adjust_description">金額調整の例：「あと30万円ほど安くする案を教えて」「予算があるので100万円アップする案を教えてほしい」</div>
             <div class="flex gap-2">
-              <input id="chat-input" class="flex-1 rounded border-slate-300" data-i18n-placeholder="ui.placeholder_chat_input" placeholder="例: あと30万円ほど安くする案を教えて" />
-              <button class="px-3 py-2 text-sm rounded bg-brand-600 text-white" onclick="sendChat()" data-i18n="ui.button_send">送信</button>
+              <textarea id="chat-input" rows="3" class="flex-1 rounded border-slate-300 resize-none" data-i18n-placeholder="ui.placeholder_chat_input" placeholder="例: あと30万円ほど安くする案を教えて"></textarea>
+              <button class="px-3 py-2 text-sm rounded bg-brand-600 text-white self-end" onclick="sendChat()" data-i18n="ui.button_send">送信</button>
             </div>
             <div id="chat-suggestions" class="mt-3 flex flex-wrap gap-2"></div>
             <div id="chat-reply" class="mt-3 text-sm text-slate-700 prose prose-slate max-w-none"></div>
@@ -976,12 +976,12 @@
             </div>
             <div class="flex items-center gap-4 text-sm">
               <div class="text-right">
-                <div class="text-slate-500 text-xs">工数</div>
-                <div class="font-semibold tabular-nums">${pd}人日${pdBadge}</div>
+                <div class="text-slate-500 text-xs">${t('ui.label_person_days')}</div>
+                <div class="font-semibold tabular-nums">${pd}${t('ui.unit_person_days')}${pdBadge}</div>
               </div>
               <div class="text-right">
-                <div class="text-slate-500 text-xs">金額</div>
-                <div class="font-semibold tabular-nums">${amt}円${amtBadge}</div>
+                <div class="text-slate-500 text-xs">${t('ui.label_amount')}</div>
+                <div class="font-semibold tabular-nums">${amt}${t('ui.unit_yen')}${amtBadge}</div>
               </div>
               <svg class="w-5 h-5 text-slate-400 transition-transform duration-200 accordion-icon-${index}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -991,11 +991,11 @@
           <div class="accordion-content-${index} hidden px-4 py-3 border-t border-slate-200 bg-slate-50">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <div class="text-sm font-semibold text-slate-900 mb-2">工数内訳</div>
+                <div class="text-sm font-semibold text-slate-900 mb-2">${t('ui.label_reasoning_breakdown')}</div>
                 <div class="text-sm text-slate-700 prose prose-slate max-w-none">${htmlBreakdown}</div>
               </div>
               <div>
-                <div class="text-sm font-semibold text-slate-900 mb-2">根拠・備考</div>
+                <div class="text-sm font-semibold text-slate-900 mb-2">${t('ui.label_reasoning_notes')}</div>
                 <div class="text-sm text-slate-700 prose prose-slate max-w-none">${htmlNotes}</div>
               </div>
             </div>
@@ -1007,16 +1007,16 @@
 
       // 合計更新
       if (apiData.totals) {
-        document.getElementById('subtotal').textContent = Math.round(apiData.totals.subtotal).toLocaleString();
-        document.getElementById('tax').textContent = Math.round(apiData.totals.tax).toLocaleString();
-        document.getElementById('total').textContent = Math.round(apiData.totals.total).toLocaleString();
+        document.getElementById('subtotal').textContent = Math.round(apiData.totals.subtotal).toLocaleString() + t('ui.unit_yen');
+        document.getElementById('tax').textContent = Math.round(apiData.totals.tax).toLocaleString() + t('ui.unit_yen');
+        document.getElementById('total').textContent = Math.round(apiData.totals.total).toLocaleString() + t('ui.unit_yen');
       } else {
         const subtotal = (ests||[]).reduce((a,c)=>a+Math.round(c.amount||0),0);
         const tax = Math.round(subtotal*0.1);
         const total = subtotal + tax;
-        document.getElementById('subtotal').textContent = subtotal.toLocaleString();
-        document.getElementById('tax').textContent = tax.toLocaleString();
-        document.getElementById('total').textContent = total.toLocaleString();
+        document.getElementById('subtotal').textContent = subtotal.toLocaleString() + t('ui.unit_yen');
+        document.getElementById('tax').textContent = tax.toLocaleString() + t('ui.unit_yen');
+        document.getElementById('total').textContent = total.toLocaleString() + t('ui.unit_yen');
       }
 
       // 棒グラフを疑似振動で更新（色は固定）

@@ -139,7 +139,18 @@
     "fit_budget_adjusted": "総額 {current} 円 → {new} 円（上限 {cap} 円に合わせ係数 {ratio} を適用）",
     "unit_cost_changed": "単価を {cost} 円/人日に変更しました。",
     "risk_buffer_added": "リスクバッファ {percent}% を上乗せしました。",
-    "ai_request_received": "ご要望を承知しました。以下の調整案を適用します。"
+    "ai_request_received": "ご要望を承知しました。以下の調整案を適用します。",
+    "suggestion_reduce_20": "{name}を20%下げる",
+    "suggestion_exclude": "{name}を除外",
+    "suggestion_reduce_all_5": "全体を5%下げる",
+    "suggestion_unit_cost_40k": "単価を4万円/人日に",
+    "suggestion_fit_budget_1.2m": "上限120万円に合わせる",
+    "suggestion_message_reduce_20": "{name}を20%下げてください",
+    "suggestion_message_exclude": "{name}は今回は除外してください",
+    "suggestion_message_reduce_all_5": "全体を5%下げてください",
+    "summary_subtotal": "小計",
+    "summary_tax": "税額",
+    "summary_total": "合計"
   },
   "excel": {
     "sheet_name": "見積り",

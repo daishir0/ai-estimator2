@@ -139,7 +139,18 @@
     "fit_budget_adjusted": "Total {current} → {new} (adjusted to cap {cap} with factor {ratio})",
     "unit_cost_changed": "Changed unit cost to {cost} per person-day.",
     "risk_buffer_added": "Added {percent}% risk buffer.",
-    "ai_request_received": "Request received. Applying the following adjustments."
+    "ai_request_received": "Request received. Applying the following adjustments.",
+    "suggestion_reduce_20": "Reduce {name} by 20%",
+    "suggestion_exclude": "Exclude {name}",
+    "suggestion_reduce_all_5": "Reduce overall by 5%",
+    "suggestion_unit_cost_40k": "Change unit cost to 40k per person-day",
+    "suggestion_fit_budget_1.2m": "Fit to 1.2M budget cap",
+    "suggestion_message_reduce_20": "Please reduce {name} by 20%",
+    "suggestion_message_exclude": "Please exclude {name} for now",
+    "suggestion_message_reduce_all_5": "Please reduce the overall estimate by 5%",
+    "summary_subtotal": "Subtotal",
+    "summary_tax": "Tax",
+    "summary_total": "Total"
   },
   "excel": {
     "sheet_name": "Estimate",

@@ -625,7 +625,7 @@ class ChatService:
         reply_parts = []
         if message:
             self.save_user_message(task_id, message)
-            reply_parts.append("ご要望を承知しました。以下の調整案を適用します。")
+            reply_parts.append(t('messages.ai_request_received'))
 
         updated = ests
         note = None
@@ -757,7 +757,8 @@ class ChatService:
                     note = "（AI提案は無効化されているため、見積値は変更していません）"
 
         totals = self._calc_totals(updated)
-        reply_md = "\n\n".join([p for p in ["\n".join(reply_parts), f"- {note}", f"- 小計: {int(totals['subtotal']):,} 円 / 税額: {int(totals['tax']):,} 円 / 合計: {int(totals['total']):,} 円"] if p])
+        unit = t('ui.unit_yen')
+        reply_md = "\n\n".join([p for p in ["\n".join(reply_parts), f"- {note}", f"- {t('messages.summary_subtotal')}: {int(totals['subtotal']):,}{unit} / {t('messages.summary_tax')}: {int(totals['tax']):,}{unit} / {t('messages.summary_total')}: {int(totals['total']):,}{unit}"] if p])
 
         # 保存（会話のみ）。見積りのDB反映は「適用」APIで予定（フェーズ2）
         self.save_assistant_message(task_id, reply_md)
@@ -773,11 +774,11 @@ class ChatService:
                 if len(names) >= 3: break
             sugs = []
             for nm in names:
-                sugs.append({ 'label': f"{nm}を20%下げる", 'payload': { 'message': f"{nm}を20%下げてください" } })
-                sugs.append({ 'label': f"{nm}を除外", 'payload': { 'message': f"{nm}は今回は除外してください" } })
-            sugs.append({ 'label': '全体を5%下げる', 'payload': { 'message': '全体を5%下げてください' } })
-            sugs.append({ 'label': '単価を4万円/人日に', 'payload': { 'intent': 'unit_cost_change', 'params': { 'unit_cost': 40000 } } })
-            sugs.append({ 'label': '上限120万円に合わせる', 'payload': { 'intent': 'fit_budget', 'params': { 'cap': 1200000 } } })
+                sugs.append({ 'label': t('messages.suggestion_reduce_20').format(name=nm), 'payload': { 'message': t('messages.suggestion_message_reduce_20').format(name=nm) } })
+                sugs.append({ 'label': t('messages.suggestion_exclude').format(name=nm), 'payload': { 'message': t('messages.suggestion_message_exclude').format(name=nm) } })
+            sugs.append({ 'label': t('messages.suggestion_reduce_all_5'), 'payload': { 'message': t('messages.suggestion_message_reduce_all_5') } })
+            sugs.append({ 'label': t('messages.suggestion_unit_cost_40k'), 'payload': { 'intent': 'unit_cost_change', 'params': { 'unit_cost': 40000 } } })
+            sugs.append({ 'label': t('messages.suggestion_fit_budget_1.2m'), 'payload': { 'intent': 'fit_budget', 'params': { 'cap': 1200000 } } })
             return sugs
 
         suggestions = build_suggestions(updated if updated else ests)
