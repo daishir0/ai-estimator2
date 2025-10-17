@@ -144,10 +144,14 @@ class TaskService:
             self.update_task_status(task_id, TaskStatus.PROCESSING)
             print(f"[TS] status=processing task_id={task_id}")
 
-            # Excelファイルから成果物を読み込み
+            # ファイルから成果物を読み込み（Excel/CSV自動判定）
             input_service = InputService()
-            deliverables = input_service.load_excel_data(task.excel_file_path)
-            print(f"[TS] loaded deliverables n={len(deliverables)} task_id={task_id}")
+            if task.excel_file_path.endswith('.csv'):
+                deliverables = input_service.load_csv_data(task.excel_file_path)
+                print(f"[TS] loaded deliverables from CSV n={len(deliverables)} task_id={task_id}")
+            else:
+                deliverables = input_service.load_excel_data(task.excel_file_path)
+                print(f"[TS] loaded deliverables from Excel n={len(deliverables)} task_id={task_id}")
 
             # 成果物を保存
             self.save_deliverables(task_id, deliverables)

@@ -29,50 +29,100 @@ router = APIRouter()
 
 @router.post("/tasks", response_model=TaskResponse)
 async def create_task(
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    deliverables_json: Optional[str] = Form(None),
     system_requirements: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
     """
-    タスクを作成してExcelファイルをアップロード
+    タスクを作成（Excel・CSV・Webフォーム対応）
 
-    - **file**: Excelファイル（成果物一覧）
+    - **file**: Excel/CSVファイル（成果物一覧）
+    - **deliverables_json**: Webフォームからの成果物JSON
     - **system_requirements**: システム要件（任意）
     """
-    # ファイルサイズチェック
-    file_size = 0
-    chunk_size = 1024 * 1024  # 1MB
-    temp_file = f"{settings.UPLOAD_DIR}/temp_{file.filename}"
+    import json
 
-    try:
-        with open(temp_file, "wb") as buffer:
-            while chunk := await file.read(chunk_size):
-                file_size += len(chunk)
-                if file_size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
-                    os.remove(temp_file)
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"ファイルサイズが{settings.MAX_UPLOAD_SIZE_MB}MBを超えています",
-                    )
-                buffer.write(chunk)
+    # ファイルアップロードの場合
+    if file:
+        file_size = 0
+        chunk_size = 1024 * 1024  # 1MB
+        temp_file = f"{settings.UPLOAD_DIR}/temp_{file.filename}"
 
-        # ファイル形式チェック
-        if not file.filename.endswith((".xlsx", ".xls")):
-            os.remove(temp_file)
-            raise HTTPException(
-                status_code=400, detail="Excelファイル（.xlsx, .xls）のみアップロード可能です"
-            )
+        try:
+            with open(temp_file, "wb") as buffer:
+                while chunk := await file.read(chunk_size):
+                    file_size += len(chunk)
+                    if file_size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+                        os.remove(temp_file)
+                        raise HTTPException(
+                            status_code=413,
+                            detail=f"ファイルサイズが{settings.MAX_UPLOAD_SIZE_MB}MBを超えています",
+                        )
+                    buffer.write(chunk)
 
-        # タスク作成
-        task_service = TaskService(db)
-        task = task_service.create_task(temp_file, system_requirements)
+            # ファイル形式チェック
+            if file.filename.endswith(".csv"):
+                # CSV処理
+                print(f"[API] CSV file uploaded: {file.filename}")
+                pass  # CSVとして処理（後続でInputServiceが判断）
+            elif file.filename.endswith((".xlsx", ".xls")):
+                # Excel処理
+                print(f"[API] Excel file uploaded: {file.filename}")
+                pass  # Excelとして処理（後続でInputServiceが判断）
+            else:
+                os.remove(temp_file)
+                raise HTTPException(
+                    status_code=400, detail="Excel（.xlsx, .xls）またはCSV（.csv）ファイルのみアップロード可能です"
+                )
 
-        return task
+            # タスク作成
+            task_service = TaskService(db)
+            task = task_service.create_task(temp_file, system_requirements)
 
-    except Exception as e:
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
-        raise HTTPException(status_code=500, detail=str(e))
+            return task
+
+        except Exception as e:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # Webフォームの場合
+    elif deliverables_json:
+        try:
+            # JSONをパース
+            deliverables_data = json.loads(deliverables_json)
+            print(f"[API] Web form submitted: {len(deliverables_data)} deliverables")
+
+            # 一時的なExcelファイルを作成（既存のフローを流用）
+            import pandas as pd
+            from datetime import datetime
+
+            # DataFrameを作成
+            df = pd.DataFrame(deliverables_data)
+
+            # 一時Excelファイルに保存
+            temp_file = f"{settings.UPLOAD_DIR}/temp_webform_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+            df.to_excel(temp_file, index=False, header=['成果物名称', '説明'], engine='openpyxl')
+
+            # タスク作成
+            task_service = TaskService(db)
+            task = task_service.create_task(temp_file, system_requirements)
+
+            return task
+
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="成果物データのJSON解析に失敗しました")
+        except Exception as e:
+            if 'temp_file' in locals() and os.path.exists(temp_file):
+                os.remove(temp_file)
+            raise HTTPException(status_code=500, detail=str(e))
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="ファイルまたは成果物データを指定してください"
+        )
 
 
 @router.get("/tasks/{task_id}/questions", response_model=List[str])
@@ -247,6 +297,23 @@ async def download_sample_input():
         sample_path,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename="sample_input.xlsx",
+    )
+
+
+@router.get("/sample-input-csv")
+async def download_sample_input_csv():
+    """
+    サンプルのCSV入力ファイルをダウンロード
+    - 既定パス: settings.UPLOAD_DIR/sample_input.csv
+    """
+    sample_path = os.path.join(settings.UPLOAD_DIR, "sample_input.csv")
+    if not os.path.exists(sample_path):
+        raise HTTPException(status_code=404, detail="サンプルCSVファイルが見つかりません")
+
+    return FileResponse(
+        sample_path,
+        media_type="text/csv",
+        filename="sample_input.csv",
     )
 
 
