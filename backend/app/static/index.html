@@ -395,7 +395,7 @@
           const bg = labels.map((_, i) => `hsl(${(i*57)%360} 70% 60%)`);
           estChart = new Chart(ctx, {
             type: 'bar',
-            data: { labels: labels.slice(), datasets: [{ label: '金額(円)', data: amountsNew.slice(), backgroundColor: bg }] },
+            data: { labels: labels.slice(), datasets: [{ label: t('ui.chart_amount_label'), data: amountsNew.slice(), backgroundColor: bg }] },
             options: {
               responsive: true,
               animation: { duration: 400, easing: 'easeOutCubic' },
