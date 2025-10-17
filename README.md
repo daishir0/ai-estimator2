@@ -1,202 +1,309 @@
-# AI見積り作成システム Web版
+# ai-estimator2
 
-**バージョン**: v2.0
-**作成日**: 2025年10月10日
-**参考システム**: GraspIt (22_pj-graspai)
+## Overview
+AI-powered project estimation system with an intelligent web interface. This system uses OpenAI GPT-4 to automatically generate accurate project estimates based on deliverables and system requirements. It features a 2-step UX flow for estimate adjustments, where users can request cost changes (e.g., "reduce by 300,000 yen") and receive AI-generated proposal cards with detailed change breakdowns.
 
----
+### Key Features
 
-## 📋 概要
+1. **Multiple Input Methods**
+   - Excel file upload (drag & drop)
+   - CSV file upload
+   - Web form input (tab-based UI)
 
-CLIベースのAI見積りシステムを、FastAPIベースのWebアプリケーションにリニューアルしたシステムです（最小UIを内蔵、同期処理でスピナー表示）。
+2. **AI-Powered Estimation**
+   - Automatic question generation based on deliverables
+   - GPT-4o-mini powered estimate calculation
+   - Detailed reasoning and breakdown for each estimate
 
-### 主要機能
+3. **Interactive Estimate Adjustment**
+   - Natural language adjustment requests (e.g., "reduce by 300,000 yen")
+   - AI-generated proposal cards (3 options)
+   - One-click application of selected proposals
+   - Real-time estimate updates
 
-1. **Excelファイルアップロード** (ドラッグ&ドロップ)
-2. **システム要件入力** (自由記述)
-3. **AI質問回答** (3問)
-4. **自動見積もり生成** (OpenAI API)
-5. **結果表示** (見やすいテーブル)
-6. **Excelダウンロード** (ワンクリック)
+4. **Visual Results**
+   - Bar chart visualization
+   - Accordion-style detail view
+   - Work breakdown display
+   - Excel download
 
----
+### Technology Stack
 
-## 🔧 技術スタック
+- **Backend**: FastAPI, Python 3.11, SQLAlchemy 2.0, SQLite3
+- **AI**: OpenAI API (GPT-4o-mini)
+- **Frontend**: Vanilla JavaScript (embedded static UI)
+- **File Processing**: openpyxl, pandas
 
-### フロントエンド
-- 最小シングルページUI（Vanilla JS, StaticFiles 提供）
+## Installation
 
-### バックエンド
-- FastAPI
-- Python 3.11 (conda環境311)
-- SQLAlchemy 2.0+
-- SQLite3（デフォルト）
-- OpenAI API (gpt-4o-mini)
-- openpyxl
-
-### インフラ
-- SQLite3（単一ファイルDB）
-- Apache/Nginx（任意, リバースプロキシ構成は別途）
-
----
-
-## 🚀 セットアップ
-
-### 1. 環境変数設定
+### 1. Clone the repository
 
 ```bash
-cp .env.sample .env
-# .envを編集してAPIキーなどを設定
+git clone https://github.com/daishir0/ai-estimator2.git
+cd ai-estimator2
 ```
 
-### 2. データベース
-
-SQLite3（`DATABASE_URL=sqlite:///./app.db`）がデフォルトです。追加の作業は不要です。
-
-### 3. バックエンドセットアップ
+### 2. Set up Python environment
 
 ```bash
+# Activate conda environment (Python 3.11)
+source /home/ec2-user/anaconda3/bin/activate
+conda activate 311
+
+# Navigate to backend directory
 cd backend
-source /home/ec2-user/anaconda3/bin/activate && conda activate 311
+```
+
+### 3. Install dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### 4. フロントエンド
-
-内蔵の最小UIを利用します（別途ビルド不要）。
-
-### 5. 起動
+### 4. Configure environment variables
 
 ```bash
-# バックエンド
-cd backend
+cp .env.sample .env
+```
+
+Edit `.env` file and set your OpenAI API key:
+
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+DATABASE_URL=sqlite:///./app.db
+CORS_ORIGINS=http://localhost:8000,https://estimator.path-finder.jp
+UPLOAD_DIR=./uploads
+MAX_UPLOAD_SIZE_MB=10
+UNIT_PRICE_PER_DAY=40000
+API_V1_STR=/api/v1
+```
+
+### 5. Initialize database
+
+The SQLite database will be created automatically on first startup. No additional setup required.
+
+### 6. Start the server
+
+```bash
+# Development mode
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+# Production mode (using systemd)
+sudo systemctl start estimator.service
+```
+
+### 7. Access the application
+
+- Web UI: http://localhost:8000/ui
+- API Documentation: http://localhost:8000/docs
+- Production URL: https://estimator.path-finder.jp/
+
+## Usage
+
+### Basic Workflow
+
+1. **Upload Deliverables**
+   - Choose input method (Excel/CSV/Web form)
+   - Upload file or enter deliverables manually
+   - Optionally add system requirements
+
+2. **Answer AI Questions**
+   - System generates 3 relevant questions
+   - Answer questions to refine estimates
+   - Submit answers to proceed
+
+3. **Review Estimates**
+   - View detailed estimates with reasoning
+   - Check work breakdown (requirements, design, implementation, testing, documentation)
+   - Review total cost with tax
+
+4. **Adjust Estimates (Optional)**
+   - Type adjustment request: "あと30万円ほど安くする案を教えて"
+   - Review 3 AI-generated proposal cards
+   - Click "この案を適用する" to apply selected proposal
+   - Download Excel file with final estimates
+
+### API Endpoints
+
+- `POST /api/v1/tasks` - Create new estimation task
+- `GET /api/v1/tasks/{task_id}/questions` - Get AI-generated questions
+- `POST /api/v1/tasks/{task_id}/answers` - Submit answers and generate estimates
+- `GET /api/v1/tasks/{task_id}/result` - Get estimation results
+- `POST /api/v1/tasks/{task_id}/chat` - Adjust estimates with AI proposals
+- `POST /api/v1/tasks/{task_id}/apply` - Apply adjusted estimates
+- `GET /api/v1/tasks/{task_id}/download` - Download Excel file
+
+### Sample Input Files
+
+- Sample Excel: http://localhost:8000/api/v1/sample-input
+- Sample CSV: http://localhost:8000/api/v1/sample-input-csv
+
+## Notes
+
+- OpenAI API key is required for AI-powered features
+- Default unit price is 40,000 yen per person-day (configurable in .env)
+- Maximum upload file size is 10MB (configurable)
+- Excel files must have columns: 成果物名称, 説明
+- CSV files must be UTF-8 encoded
+- Proposal cache is shared across all instances using class variables
+- The system uses GPT-4o-mini for cost-effective AI operations
+- Adjustment amounts are calculated by comparing actual estimate changes, not relying on GPT-4's target_amount_change
+
+## License
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+# ai-estimator2
+
+## 概要
+AIを活用したプロジェクト見積りシステムです。OpenAI GPT-4を使用して成果物とシステム要件から自動的に正確なプロジェクト見積りを生成します。見積り調整の2ステップUXフローを搭載し、「30万円安くして」のようなリクエストに対してAIが詳細な変更内訳を含む提案カードを3つ生成します。
+
+### 主要機能
+
+1. **複数の入力方式**
+   - Excelファイルアップロード（ドラッグ&ドロップ）
+   - CSVファイルアップロード
+   - Webフォーム入力（タブベースUI）
+
+2. **AI自動見積り**
+   - 成果物に基づく自動質問生成
+   - GPT-4o-miniによる見積り計算
+   - 各見積りの詳細な根拠と内訳表示
+
+3. **インタラクティブな見積り調整**
+   - 自然言語での調整リクエスト（例：「30万円安くして」）
+   - AIによる提案カード生成（3案）
+   - ワンクリックで提案を適用
+   - リアルタイム見積り更新
+
+4. **視覚的な結果表示**
+   - 棒グラフによる可視化
+   - アコーディオン形式の詳細表示
+   - 工数内訳の表示
+   - Excelダウンロード
+
+### 技術スタック
+
+- **バックエンド**: FastAPI, Python 3.11, SQLAlchemy 2.0, SQLite3
+- **AI**: OpenAI API (GPT-4o-mini)
+- **フロントエンド**: Vanilla JavaScript（内蔵静的UI）
+- **ファイル処理**: openpyxl, pandas
+
+## インストール方法
+
+### 1. リポジトリのクローン
+
+```bash
+git clone https://github.com/daishir0/ai-estimator2.git
+cd ai-estimator2
+```
+
+### 2. Python環境のセットアップ
+
+```bash
+# conda環境をアクティベート（Python 3.11）
+source /home/ec2-user/anaconda3/bin/activate
 conda activate 311
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8009
 
-# 内蔵UIにアクセス（別途プロセス不要）
-# ブラウザで http://localhost:8009/ui
-```
-
-### 6. アクセス
-
-- 内蔵UI: http://localhost:8009/ui
-- バックエンドAPI: http://localhost:8009/docs
-
----
-
-## 🧪 テスト
-
-### 単体テスト (バックエンド)
-
-```bash
+# backendディレクトリに移動
 cd backend
-conda activate 311
-pytest
 ```
 
-### 統合テスト
+### 3. 依存パッケージのインストール
 
 ```bash
-cd backend
-conda activate 311
-pytest tests/integration/
+pip install -r requirements.txt
 ```
 
-### E2Eテスト
+### 4. 環境変数の設定
 
 ```bash
-cd tests
-npx playwright test
+cp .env.sample .env
 ```
 
----
-
-## 📁 ディレクトリ構成
-
-```
-output2/
-├── backend/           # FastAPI
-│   ├── app/
-│   │   ├── api/       # APIエンドポイント
-│   │   ├── models/    # SQLAlchemyモデル
-│   │   ├── services/  # ビジネスロジック
-│   │   ├── static/    # 内蔵UI (index.html)
-│   │   └── main.py
-│   └── tests/         # テスト
-├── database/          # PostgreSQL用スキーマ定義（SQLiteでは未使用）
-├── tests/             # （任意）
-├── services/          # （任意）
-└── docs/              # ドキュメント
-```
-
----
-
-## 🔌 systemd サービス
-
-### フロントエンド
+`.env`ファイルを編集してOpenAI APIキーを設定：
 
 ```bash
-sudo systemctl start estimator-frontend.service
-sudo systemctl status estimator-frontend.service
+OPENAI_API_KEY=your_openai_api_key_here
+DATABASE_URL=sqlite:///./app.db
+CORS_ORIGINS=http://localhost:8000,https://estimator.path-finder.jp
+UPLOAD_DIR=./uploads
+MAX_UPLOAD_SIZE_MB=10
+UNIT_PRICE_PER_DAY=40000
+API_V1_STR=/api/v1
 ```
 
-### バックエンド
+### 5. データベースの初期化
+
+SQLiteデータベースは初回起動時に自動的に作成されます。追加の設定は不要です。
+
+### 6. サーバーの起動
 
 ```bash
-sudo systemctl start estimator-backend.service
-sudo systemctl status estimator-backend.service
+# 開発モード
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+# 本番モード（systemd使用）
+sudo systemctl start estimator.service
 ```
 
-### 両方起動
+### 7. アプリケーションへのアクセス
 
-```bash
-sudo systemctl start estimator.target
-```
+- Web UI: http://localhost:8000/ui
+- APIドキュメント: http://localhost:8000/docs
+- 本番環境URL: https://estimator.path-finder.jp/
 
----
+## 使い方
 
-## 📊 データベーススキーマ
+### 基本的なワークフロー
 
-### テーブル一覧
+1. **成果物のアップロード**
+   - 入力方式を選択（Excel/CSV/Webフォーム）
+   - ファイルをアップロードまたは手動入力
+   - 必要に応じてシステム要件を追加
 
-1. **tasks** - タスク管理
-2. **deliverables** - 成果物
-3. **estimates** - 見積もり結果
-4. **qa_pairs** - 質問・回答ペア
-5. **users** - ユーザー情報 (Phase 2)
-6. **projects** - プロジェクト情報 (Phase 2)
+2. **AI質問への回答**
+   - システムが3つの関連質問を生成
+   - 質問に回答して見積りを精緻化
+   - 回答を送信して次へ進む
 
----
+3. **見積りの確認**
+   - 根拠付きの詳細見積りを表示
+   - 工数内訳を確認（要件定義、設計、実装、テスト、ドキュメント作成）
+   - 税込み合計金額を確認
 
-## 🎯 開発ロードマップ
+4. **見積りの調整（オプション）**
+   - 調整リクエストを入力：「あと30万円ほど安くする案を教えて」
+   - AIが生成した3つの提案カードを確認
+   - 「この案を適用する」をクリックして選択した提案を適用
+   - 最終見積りをExcelファイルでダウンロード
 
-### Phase 1: コア機能 (完了)
-- ✅ バックエンド基盤構築
-- ✅ フロントエンド基盤構築
-- ✅ 見積もり作成フロー (3ステップ)
-- ✅ タスク実行・結果表示
-- ✅ Excelダウンロード
-- ✅ E2Eテスト全シナリオ成功
+### APIエンドポイント
 
-### Phase 2: 拡張機能 (予定)
-- [ ] Google/GitHub SSO認証
-- [ ] 見積履歴管理
-- [ ] 管理画面
-- [ ] CSV/Markdown出力
+- `POST /api/v1/tasks` - 新規見積りタスクの作成
+- `GET /api/v1/tasks/{task_id}/questions` - AI生成質問の取得
+- `POST /api/v1/tasks/{task_id}/answers` - 回答送信と見積り生成
+- `GET /api/v1/tasks/{task_id}/result` - 見積り結果の取得
+- `POST /api/v1/tasks/{task_id}/chat` - AI提案による見積り調整
+- `POST /api/v1/tasks/{task_id}/apply` - 調整後の見積りを適用
+- `GET /api/v1/tasks/{task_id}/download` - Excelファイルのダウンロード
 
-### Phase 3: 最適化 (予定)
-- [ ] パフォーマンス改善
-- [ ] セキュリティ対策
-- [ ] 法務ページ
+### サンプル入力ファイル
 
----
+- サンプルExcel: http://localhost:8000/api/v1/sample-input
+- サンプルCSV: http://localhost:8000/api/v1/sample-input-csv
 
-## 📝 ライセンス
+## 注意点
 
-MIT License
+- AI機能を使用するにはOpenAI APIキーが必要です
+- デフォルトの単価は1人日あたり40,000円です（.envで変更可能）
+- アップロードファイルの最大サイズは10MBです（変更可能）
+- Excelファイルには「成果物名称」「説明」の列が必要です
+- CSVファイルはUTF-8エンコードである必要があります
+- 提案キャッシュはクラス変数を使用して全インスタンス間で共有されます
+- システムはコスト効率の良いGPT-4o-miniを使用しています
+- 調整額はGPT-4のtarget_amount_changeではなく、実際の見積り差分を計算して算出します
 
----
-
-**作成者**: Claude + Gemini
-**プロジェクト**: AI-Estimator Web版
-**日付**: 2025年10月10日
+## ライセンス
+このプロジェクトはMITライセンスの下でライセンスされています。詳細はLICENSEファイルを参照してください。
