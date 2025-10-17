@@ -23,7 +23,7 @@ from app.services.input_service import InputService
 from app.services.chat_service import ChatService
 from app.core.config import settings
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.core.i18n import get_i18n
+from app.core.i18n import get_i18n, t
 
 router = APIRouter()
 
@@ -104,7 +104,7 @@ async def create_task(
 
             # 一時Excelファイルに保存
             temp_file = f"{settings.UPLOAD_DIR}/temp_webform_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
-            df.to_excel(temp_file, index=False, header=['成果物名称', '説明'], engine='openpyxl')
+            df.to_excel(temp_file, index=False, header=[t('excel.column_deliverable_name'), t('excel.column_description')], engine='openpyxl')
 
             # タスク作成
             task_service = TaskService(db)

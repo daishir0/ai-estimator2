@@ -140,5 +140,22 @@
     "unit_cost_changed": "Changed unit cost to {cost} per person-day.",
     "risk_buffer_added": "Added {percent}% risk buffer.",
     "ai_request_received": "Request received. Applying the following adjustments."
+  },
+  "excel": {
+    "sheet_name": "Estimate",
+    "column_deliverable_name": "Deliverable Name",
+    "column_description": "Description",
+    "column_effort": "Effort (person-days)",
+    "column_amount": "Amount",
+    "column_breakdown": "Effort Breakdown",
+    "column_notes": "Rationale & Notes",
+    "label_subtotal": "Subtotal",
+    "label_tax": "Tax (10%)",
+    "label_total": "Total",
+    "label_qa_section": "[Questions & Answers for Better Estimation]",
+    "label_question": "Question",
+    "label_answer": "Answer",
+    "label_output_time": "[Output Date/Time]",
+    "datetime_format": "%Y/%m/%d %H:%M"
   }
 }

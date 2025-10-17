@@ -140,5 +140,22 @@
     "unit_cost_changed": "単価を {cost} 円/人日に変更しました。",
     "risk_buffer_added": "リスクバッファ {percent}% を上乗せしました。",
     "ai_request_received": "ご要望を承知しました。以下の調整案を適用します。"
+  },
+  "excel": {
+    "sheet_name": "見積り",
+    "column_deliverable_name": "成果物名称",
+    "column_description": "説明",
+    "column_effort": "予想工数（人日）",
+    "column_amount": "金額",
+    "column_breakdown": "工数内訳",
+    "column_notes": "根拠・備考",
+    "label_subtotal": "小計",
+    "label_tax": "税額 (10%)",
+    "label_total": "総額",
+    "label_qa_section": "【見積り精度向上のための質問と回答】",
+    "label_question": "質問",
+    "label_answer": "回答",
+    "label_output_time": "【出力日時】",
+    "datetime_format": "%Y年%m月%d日 %H時%M分"
   }
 }

@@ -5,6 +5,7 @@ from openpyxl.styles import Font, Alignment, Border, Side
 from datetime import datetime
 from typing import List, Dict, Any
 import os
+from app.core.i18n import t
 
 
 class ExportService:
@@ -35,11 +36,12 @@ class ExportService:
             df = self._add_estimate_columns(df, estimates)
 
             # Excelファイルを作成
+            sheet_name = t('excel.sheet_name')
             with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
-                df.to_excel(writer, sheet_name="見積り", index=False)
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
 
                 # ワークシートを取得
-                worksheet = writer.sheets["見積り"]
+                worksheet = writer.sheets[sheet_name]
 
                 # 書式設定
                 self._format_worksheet(worksheet, len(df))
@@ -63,6 +65,9 @@ class ExportService:
         self, df: pd.DataFrame, estimates: List[Dict[str, Any]]
     ) -> pd.DataFrame:
         """見積り列（C列：工数、D列：金額、E列：工数内訳、F列：根拠・備考）を追加する"""
+
+        # 既存の列名を翻訳
+        df.columns = [t('excel.column_deliverable_name'), t('excel.column_description')]
 
         # 見積りデータを辞書として整理
         estimate_dict = {est["name"]: est for est in estimates}
@@ -89,10 +94,10 @@ class ExportService:
                 notes_list.append("")
 
         # 列を追加
-        df["予想工数（人日）"] = person_days_list
-        df["金額"] = amounts_list
-        df["工数内訳"] = breakdown_list
-        df["根拠・備考"] = notes_list
+        df[t('excel.column_effort')] = person_days_list
+        df[t('excel.column_amount')] = amounts_list
+        df[t('excel.column_breakdown')] = breakdown_list
+        df[t('excel.column_notes')] = notes_list
 
         return df
 
@@ -145,15 +150,15 @@ class ExportService:
         start_row = data_rows + 3
 
         # 小計
-        worksheet.cell(row=start_row, column=3, value="小計")
+        worksheet.cell(row=start_row, column=3, value=t('excel.label_subtotal'))
         worksheet.cell(row=start_row, column=4, value=totals["subtotal"])
 
         # 税額
-        worksheet.cell(row=start_row + 1, column=3, value="税額 (10%)")
+        worksheet.cell(row=start_row + 1, column=3, value=t('excel.label_tax'))
         worksheet.cell(row=start_row + 1, column=4, value=totals["tax"])
 
         # 総額
-        worksheet.cell(row=start_row + 2, column=3, value="総額")
+        worksheet.cell(row=start_row + 2, column=3, value=t('excel.label_total'))
         worksheet.cell(row=start_row + 2, column=4, value=totals["total"])
 
         # 合計行の書式設定
@@ -180,17 +185,17 @@ class ExportService:
         start_row = data_rows + 7
 
         # 質問と回答
-        worksheet.cell(row=start_row, column=1, value="【見積り精度向上のための質問と回答】")
+        worksheet.cell(row=start_row, column=1, value=t('excel.label_qa_section'))
         worksheet.cell(row=start_row, column=1).font = Font(bold=True)
 
         current_row = start_row + 1
 
         for i, qa in enumerate(qa_pairs, 1):
-            worksheet.cell(row=current_row, column=1, value=f"質問{i}")
+            worksheet.cell(row=current_row, column=1, value=f"{t('excel.label_question')}{i}")
             worksheet.cell(row=current_row, column=2, value=qa["question"])
             current_row += 1
 
-            worksheet.cell(row=current_row, column=1, value=f"回答{i}")
+            worksheet.cell(row=current_row, column=1, value=f"{t('excel.label_answer')}{i}")
             worksheet.cell(row=current_row, column=2, value=qa["answer"])
             current_row += 1
 
@@ -198,10 +203,10 @@ class ExportService:
             current_row += 1
 
         # 出力日時
-        worksheet.cell(row=current_row + 1, column=1, value="【出力日時】")
+        worksheet.cell(row=current_row + 1, column=1, value=t('excel.label_output_time'))
         worksheet.cell(row=current_row + 1, column=1).font = Font(bold=True)
         worksheet.cell(
             row=current_row + 1,
             column=2,
-            value=datetime.now().strftime("%Y年%m月%d日 %H時%M分"),
+            value=datetime.now().strftime(t('excel.datetime_format')),
         )
