@@ -55,7 +55,7 @@ class EstimatorService:
                 'person_days': 5.0,
                 'amount': 5.0 * self.daily_unit_cost,
                 'reasoning': f'デフォルト見積り（リトライ失敗: {last}）',
-                'reasoning_breakdown': f'デフォルト見積り: 5.0人日\n\n合計: 5.0人日',
+                'reasoning_breakdown': 'デフォルト見積り: 5.0人日',
                 'reasoning_notes': f'エラーが発生したため、デフォルト値を使用しました。\nエラー: {last}'
             }
             return (idx, est)
@@ -99,20 +99,27 @@ class EstimatorService:
 【厳守事項】
 - 単位は必ず「人日」を使用し、数字の桁を間違えないこと（例: 4.5人日を45日と書かない）
 - reasoning_breakdown内のすべての数量表記も「人日」とし、小数1桁を維持する
-- 最後に「合計: X.X人日」と1行で明記し、JSONのperson_daysと完全に一致させる
 
 【出力形式】
 次のJSONのみをコードブロックなしで返す：
 {{
   "person_days": 小数1桁の数値（例: 4.5）,
-  "reasoning_breakdown": "工数内訳（Markdown可）。工程別の人日内訳と『合計: X.X人日』を必ず含める。",
+  "reasoning_breakdown": "工数内訳（Markdown可）。工程別の人日内訳を箇条書きで記載。",
   "reasoning_notes": "根拠・備考（Markdown可）。見積りの前提条件、リスク、補足説明など。"
 }}
+
+【reasoning_breakdown のフォーマット】
+以下の統一フォーマットで記載してください：
+- 要件定義: X.X人日
+- 設計: X.X人日
+- 実装: X.X人日
+- テスト: X.X人日
+- ドキュメント作成: X.X人日
 
 【見積り範囲】
 - 設計・実装・テスト・ドキュメント作成を含める
 - 成果物の複雑さを考慮した現実的な工数
-- reasoning_breakdownには工程別の数値内訳を記載
+- reasoning_breakdownには工程別の数値内訳を統一フォーマットで記載
 - reasoning_notesには前提条件やリスク、注意点を記載
 """
         
@@ -161,10 +168,6 @@ class EstimatorService:
             reasoning_breakdown = "デフォルト見積り（AIエラーのため）"
             reasoning_notes = ""
             reasoning = "デフォルト見積り（AIエラーのため）"
-
-        # 推敲: reasoning_breakdown末尾に合計の明記がなければ追記（JSONのperson_daysと整合）
-        if reasoning_breakdown and '合計:' not in reasoning_breakdown:
-            reasoning_breakdown = reasoning_breakdown.rstrip() + f"\n\n合計: {person_days:.1f}人日"
 
         # 金額計算
         amount = person_days * self.daily_unit_cost

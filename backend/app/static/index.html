@@ -232,7 +232,8 @@
             <div class="text-slate-500">金額</div>
             <div class="font-semibold tabular-nums">${amt}</div>
           </div>
-          ${item.reasoning ? `<div class="text-slate-500 text-xs mt-3">${item.reasoning}</div>` : ''}
+          ${breakdown ? `<div class="text-slate-600 text-xs mt-3"><div class="font-semibold mb-1">工数内訳</div><div class="prose prose-slate max-w-none">${htmlBreakdown}</div></div>` : ''}
+          ${notes ? `<div class="text-slate-600 text-xs mt-2"><div class="font-semibold mb-1">根拠・備考</div><div class="prose prose-slate max-w-none">${htmlNotes}</div></div>` : ''}
         `;
         cards.appendChild(card);
       });
@@ -669,7 +670,8 @@
             <div class="text-slate-500">金額</div>
             <div class="font-semibold tabular-nums">${amt} ${amtBadge}</div>
           </div>
-          ${md ? `<div class="text-slate-700 text-xs mt-3 prose prose-slate max-w-none">${htmlReason}</div>` : ''}
+          ${breakdown ? `<div class="text-slate-600 text-xs mt-3"><div class="font-semibold mb-1">工数内訳</div><div class="prose prose-slate max-w-none">${htmlBreakdown}</div></div>` : ''}
+          ${notes ? `<div class="text-slate-600 text-xs mt-2"><div class="font-semibold mb-1">根拠・備考</div><div class="prose prose-slate max-w-none">${htmlNotes}</div></div>` : ''}
         `;
         cards.appendChild(card);
       });
