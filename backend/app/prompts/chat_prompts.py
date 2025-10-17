@@ -3,13 +3,17 @@ from app.core.i18n import t
 
 
 def get_chat_system_prompt() -> str:
-    """チャットシステムプロンプトを取得"""
-    return t('prompts.estimate_system')
+    """チャットシステムプロンプトを取得（言語指示付き）"""
+    base_prompt = t('prompts.chat_system')
+    language_instruction = t('prompts.chat_language_instruction')
+    return f"{base_prompt}\n\n{language_instruction}"
 
 
 def get_proposal_generation_prompt(user_message: str, estimates: list, totals: dict) -> str:
-    """提案生成プロンプトを生成"""
+    """提案生成プロンプトを生成（言語指示付き）"""
     unit = t('prompts.estimate_unit')
+    base_prompt = t('prompts.chat_system')
+    language_instruction = t('prompts.chat_language_instruction')
 
     estimates_text = "\n".join([
         f"- {e['deliverable_name']}: {e['person_days']}{unit} ({e['amount']:,}円)"
@@ -17,7 +21,9 @@ def get_proposal_generation_prompt(user_message: str, estimates: list, totals: d
     ])
 
     return f"""
-あなたは経験豊富なプロジェクトマネージャーです。
+{base_prompt}
+{language_instruction}
+
 ユーザーの要望に基づいて、見積りの調整案を3つ提案してください。
 
 【現在の見積り】

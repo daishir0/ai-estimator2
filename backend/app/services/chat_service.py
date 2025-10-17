@@ -8,6 +8,7 @@ import uuid
 from app.models import Estimate, Task, Message
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.i18n import t
 import json
 import re
 
@@ -356,8 +357,13 @@ class ChatService:
 
         direction_text = '削減' if direction == 'reduce' else '増額'
 
+        # 言語指示を取得
+        language_instruction = t('prompts.chat_language_instruction')
+
         # GPT-4にプロンプト送信
-        prompt = f"""あなたは見積調整の専門家です。以下の見積に対して、{direction_text}方向に約{target_change:,}円調整する提案を3つ作成してください。
+        prompt = f"""{language_instruction}
+
+あなたは見積調整の専門家です。以下の見積に対して、{direction_text}方向に約{target_change:,}円調整する提案を3つ作成してください。
 
 【現在の見積】
 {current_summary}
@@ -402,10 +408,13 @@ class ChatService:
             print(f"[ChatService] GPT-4呼び出し開始: model={getattr(settings, 'OPENAI_MODEL', 'gpt-4o')}")
             client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
             print(f"[ChatService] OpenAIクライアント作成完了")
+            # システムプロンプトに言語指示を追加
+            system_prompt = f"{t('prompts.chat_system')}\n\n{t('prompts.chat_language_instruction')}\n\nあなたは厳密なフォーマットで応答する上級PMです。JSON形式のみで返答してください。"
+
             resp = client.chat.completions.create(
                 model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o'),
                 messages=[
-                    {"role": "system", "content": "あなたは厳密なフォーマットで応答する上級PMです。JSON形式のみで返答してください。"},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=2000,
@@ -653,10 +662,13 @@ class ChatService:
             if _OPENAI_AVAILABLE and getattr(settings, 'OPENAI_API_KEY', None):
                 try:
                     client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+                    # 言語指示を取得
+                    language_instruction = t('prompts.chat_language_instruction')
                     # daily unit cost は設定値を伝え、金額整合を要求
                     prompt = {
                         "role": "user",
                         "content": (
+                            f"{language_instruction}\n\n"
                             "以下は現在の見積です。各項目の人日(person_days)と金額(amount)を単価"
                             f"{settings.DAILY_UNIT_COST}円/人日で整合がとれるように調整し、依頼文に沿って改善案を出してください。\n"
                             "JSONのみ、コードブロックなしで返してください。フィールドは reply_md, estimates(配列), totals のみ。\n"
@@ -666,10 +678,13 @@ class ChatService:
                             "現在の見積(JSON):\n" + json.dumps(updated, ensure_ascii=False)
                         ),
                     }
+                    # システムプロンプトに言語指示を追加
+                    system_prompt = f"{t('prompts.chat_system')}\n\n{language_instruction}\n\nあなたは厳密なフォーマットで応答する上級PMです。"
+
                     resp = client.chat.completions.create(
                         model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini'),
                         messages=[
-                            {"role": "system", "content": "あなたは厳密なフォーマットで応答する上級PMです。"},
+                            {"role": "system", "content": system_prompt},
                             prompt,
                         ],
                         max_tokens=1000,

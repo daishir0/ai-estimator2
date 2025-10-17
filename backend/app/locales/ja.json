@@ -121,7 +121,10 @@
     "estimate_system": "あなたは経験豊富なシステム開発プロジェクトマネージャーです。",
     "estimate_instruction": "以下の情報を基に、成果物の開発工数を見積もってください。",
     "estimate_unit": "人日",
-    "estimate_breakdown_format": "- 要件定義: X.X人日\n- 設計: X.X人日\n- 実装: X.X人日\n- テスト: X.X人日\n- ドキュメント作成: X.X人日"
+    "estimate_breakdown_format": "- 要件定義: X.X人日\n- 設計: X.X人日\n- 実装: X.X人日\n- テスト: X.X人日\n- ドキュメント作成: X.X人日",
+    "language_instruction": "必ず日本語で回答してください。",
+    "chat_system": "あなたは経験豊富なプロジェクトマネージャーです。",
+    "chat_language_instruction": "必ず日本語で提案と説明を記述してください。"
   },
   "defaults": {
     "question1": "想定しているユーザー数とアクセス頻度はどの程度ですか？",

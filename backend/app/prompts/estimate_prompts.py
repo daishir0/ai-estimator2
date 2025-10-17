@@ -45,5 +45,7 @@ def get_estimate_prompt(deliverable: dict, system_requirements: str, qa_text: st
 
 
 def get_system_prompt() -> str:
-    """システムプロンプトを取得"""
-    return t('prompts.estimate_system')
+    """システムプロンプトを取得（言語指示付き）"""
+    base_prompt = t('prompts.estimate_system')
+    language_instruction = t('prompts.language_instruction')
+    return f"{base_prompt}\n\n{language_instruction}"
