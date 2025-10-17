@@ -358,6 +358,7 @@ async def chat_adjust(task_id: str, req: ChatRequest, db: Session = Depends(get_
     resp = ChatResponse(
         reply_md=result.get("reply_md", ""),
         suggestions=result.get("suggestions"),
+        proposals=result.get("proposals"),  # 提案カード（2ステップUX）
         estimates=resp_items,
         totals=result.get("totals"),
         version=result.get("version"),

@@ -61,3 +61,4 @@ app.include_router(tasks.router, prefix=f"{settings.API_V1_STR}", tags=["tasks"]
 static_dir = Path(__file__).resolve().parent / "static"
 if static_dir.exists():
     app.mount("/ui", StaticFiles(directory=str(static_dir), html=True), name="ui")
+    app.mount("/static", StaticFiles(directory=str(static_dir), html=True), name="static")

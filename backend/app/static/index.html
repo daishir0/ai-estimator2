@@ -500,18 +500,149 @@
           return;
         }
         const data = await res.json();
-        console.log('[UI] sendChat ok', { estimates: (data&&data.estimates)? data.estimates.length: 0 });
+        console.log('[UI] sendChat ok', { estimates: (data&&data.estimates)? data.estimates.length: 0, proposals: data?.proposals?.length || 0 });
+
+        // AIからの返信メッセージを表示
         try {
           const rep = document.getElementById('chat-reply');
           if (rep && data && data.reply_md) {
             rep.innerHTML = DOMPurify.sanitize(marked.parse(String(data.reply_md)));
           }
         } catch(_){}
-        updateEstimatesView(data, true);
+
+        // 提案がある場合は提案カードを表示（見積は更新しない）
+        if (data && data.proposals && data.proposals.length > 0) {
+          renderProposals(data.proposals);
+          // 見積は更新せず、提案選択を待つ
+        } else {
+          // 提案がない場合は通常の見積更新
+          updateEstimatesView(data, true);
+        }
+
         if (data && data.suggestions) renderSuggestions(data.suggestions);
         document.getElementById('chat-input').value='';
       } catch (e) { toast('送信に失敗しました', 'error', { details: e?.message||String(e) }); }
       finally { showSpinner(false); }
+    }
+
+    function renderProposals(proposals) {
+      try {
+        const container = document.getElementById('chat-proposals');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        (proposals || []).forEach((proposal, index) => {
+          const proposalCard = document.createElement('div');
+          proposalCard.className = 'border border-slate-300 rounded-lg p-4 bg-white hover:shadow-md transition-shadow';
+
+          // 金額変化の方向を判定
+          const amountChange = proposal.target_amount_change || 0;
+          const isReduction = amountChange < 0;
+          const amountClass = isReduction ? 'text-emerald-600' : 'text-blue-600';
+          const amountLabel = isReduction ? '削減額' : '増額';
+          const amountDisplay = Math.abs(amountChange).toLocaleString();
+
+          // 変更内容のHTML生成
+          let changesHtml = '';
+          if (proposal.changes && proposal.changes.length > 0) {
+            changesHtml = '<ul class="list-disc list-inside space-y-1 text-sm text-slate-700">';
+            proposal.changes.forEach(change => {
+              const pdBefore = Number(change.person_days_before || 0).toFixed(1);
+              const pdAfter = Number(change.person_days_after || 0).toFixed(1);
+              const amtBefore = Math.round(change.amount_before || 0).toLocaleString();
+              const amtAfter = Math.round(change.amount_after || 0).toLocaleString();
+              const reasoning = change.reasoning || '';
+
+              changesHtml += `<li><span class="font-medium">${change.deliverable_name || ''}</span>: ${pdBefore}人日 → ${pdAfter}人日 (${amtBefore}円 → ${amtAfter}円)`;
+              if (reasoning) {
+                changesHtml += `<br><span class="text-xs text-slate-500 ml-6">${reasoning}</span>`;
+              }
+              changesHtml += '</li>';
+            });
+            changesHtml += '</ul>';
+          }
+
+          proposalCard.innerHTML = `
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <div class="font-semibold text-slate-900 mb-1">【案${index + 1}】${proposal.title || ''}</div>
+                <div class="text-sm ${amountClass} font-medium">${amountLabel}: ${amountDisplay}円</div>
+              </div>
+            </div>
+            ${proposal.description ? `<div class="text-sm text-slate-600 mb-3">${proposal.description}</div>` : ''}
+            <div class="mb-4">
+              <div class="text-xs font-semibold text-slate-700 mb-2">変更内容:</div>
+              ${changesHtml}
+            </div>
+            <button
+              onclick="applyProposal('${proposal.id || ''}')"
+              class="w-full px-4 py-2 text-sm rounded ${isReduction ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium transition-colors"
+            >
+              この案を適用する
+            </button>
+          `;
+
+          container.appendChild(proposalCard);
+        });
+
+        console.log(`[UI] renderProposals: ${proposals.length} proposals displayed`);
+      } catch (e) {
+        console.error('[UI] renderProposals error:', e);
+        toast('提案の表示に失敗しました', 'error', { details: e?.message || String(e) });
+      }
+    }
+
+    async function applyProposal(proposalId) {
+      if (!currentTaskId) return;
+      if (!proposalId) {
+        toast('提案IDが不正です', 'error');
+        return;
+      }
+
+      // 確認ダイアログ
+      if (!confirm('この提案を適用しますか？見積内容が更新されます。')) {
+        return;
+      }
+
+      showSpinner(true);
+      try {
+        console.log('[UI] applyProposal start', { proposalId, taskId: currentTaskId });
+
+        const res = await fetch(`${API_BASE}/api/v1/tasks/${currentTaskId}/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            intent: 'apply_proposal',
+            params: { proposal_id: proposalId },
+            estimates: (window.lastEstimates || [])
+          }),
+          credentials: 'include'
+        });
+
+        if (!res.ok) {
+          const t = await res.text().catch(() => '');
+          toast('提案の適用に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          return;
+        }
+
+        const data = await res.json();
+        console.log('[UI] applyProposal ok', { estimates: (data && data.estimates) ? data.estimates.length : 0 });
+
+        // 提案カードをクリア
+        const container = document.getElementById('chat-proposals');
+        if (container) container.innerHTML = '';
+
+        // 見積を更新
+        updateEstimatesView(data, true);
+
+        toast('提案を適用しました！', 'success');
+      } catch (e) {
+        console.error('[UI] applyProposal error:', e);
+        toast('提案の適用に失敗しました', 'error', { details: e?.message || String(e) });
+      } finally {
+        showSpinner(false);
+      }
     }
 
     function renderSuggestions(suggestions){
@@ -722,13 +853,14 @@
           </div>
           <div>
             <div class="text-sm font-semibold text-slate-800 mb-1">AI見積調整（自由入力）</div>
-            <div class="text-xs text-slate-500 -mt-2 mb-2">ご要望を自然文で入力すると、AIが調整案を提示します。</div>
+            <div class="text-xs text-slate-500 -mt-2 mb-2">金額調整の例：「あと30万円ほど安くする案を教えて」「予算があるので100万円アップする案を教えてほしい」</div>
             <div class="flex gap-2">
-              <input id="chat-input" class="flex-1 rounded border-slate-300" placeholder="例: 初期リリースは管理画面を除外して、予算内に抑えたい" />
+              <input id="chat-input" class="flex-1 rounded border-slate-300" placeholder="例: あと30万円ほど安くする案を教えて" />
               <button class="px-3 py-2 text-sm rounded bg-brand-600 text-white" onclick="sendChat()">送信</button>
             </div>
             <div id="chat-suggestions" class="mt-3 flex flex-wrap gap-2"></div>
             <div id="chat-reply" class="mt-3 text-sm text-slate-700 prose prose-slate max-w-none"></div>
+            <div id="chat-proposals" class="mt-4 space-y-3"></div>
           </div>
           <div class="mt-4">
             <button class="px-4 py-2 text-sm rounded bg-emerald-600 text-white" onclick="applyAdjustments()">調整案を反映（Excel再出力）</button>

@@ -26,6 +26,7 @@ class ChatEstimateItem(BaseModel):
 class ChatResponse(BaseModel):
     reply_md: str
     suggestions: Optional[List[ChatSuggestion]] = None
+    proposals: Optional[List[Dict[str, Any]]] = None  # 提案カード（2ステップUX）
     estimates: Optional[List[ChatEstimateItem]] = None
     totals: Optional[Dict[str, float]] = None
     version: Optional[int] = None

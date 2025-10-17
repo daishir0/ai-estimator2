@@ -19,6 +19,9 @@ except Exception:
 
 
 class ChatService:
+    # 提案キャッシュ（クラス変数として全インスタンス共有）
+    _proposals_cache: Dict[str, List[Dict[str, Any]]] = {}
+
     def __init__(self, db: Session):
         self.db = db
 
@@ -252,6 +255,280 @@ class ChatService:
         has_changes = len(changed) > 0
         return new_ests, note, has_changes
 
+    # --- 金額調整検出（2ステップフロー用） ---
+    def _detect_adjustment_request(self, message: str) -> Dict[str, Any] | None:
+        """
+        「30万円安く」「100万円アップ」などの金額調整リクエストを検出
+
+        Returns:
+            {
+                'amount': 300000,  # 絶対値
+                'direction': 'reduce',  # 'reduce' or 'increase'
+            }
+            or None
+        """
+        if not message:
+            return None
+
+        m = message.lower()
+
+        # デバッグログ
+        print(f"[ChatService] _detect_adjustment_request: message='{message}' normalized='{m}'")
+
+        # パターン1: 「30万円安く」「50万削減」（削減系）
+        # 「あと」「さらに」「もっと」などの前置詞に対応
+        # 「ほど」「ぐらい」「くらい」などの助詞に対応
+        # 「する」「して」「したい」などの動詞に対応
+        reduce_patterns = [
+            r'(?:あと|さらに|もっと|もう少し)?[\s　]*(\d+)[\s　]*万円?(?:ほど|ぐらい|くらい)?(?:安く|削減|減らし|下げ|カット|ダウン|マイナス)',
+            r'(?:あと|さらに|もっと|もう少し)?[\s　]*(\d+)[\s　]*万(?:ほど|ぐらい|くらい)?(?:安く|削減|減らし|下げ|カット|ダウン|マイナス)',
+            r'(?:あと|さらに|もっと|もう少し)?[\s　]*(\d+)0{4}[\s　]*円(?:ほど|ぐらい|くらい)?(?:安く|削減|減らし|下げ|カット|ダウン|マイナス)',
+        ]
+
+        # パターン2: 「100万円アップ」「50万追加」（増額系）
+        increase_patterns = [
+            r'(?:あと|さらに|もっと|もう少し)?[\s　]*(\d+)[\s　]*万円?(?:ほど|ぐらい|くらい)?(?:アップ|増やし|追加|上げ|プラス)',
+            r'(?:あと|さらに|もっと|もう少し)?[\s　]*(\d+)[\s　]*万(?:ほど|ぐらい|くらい)?(?:アップ|増やし|追加|上げ|プラス)',
+            r'(?:あと|さらに|もっと|もう少し)?[\s　]*(\d+)0{4}[\s　]*円(?:ほど|ぐらい|くらい)?(?:アップ|増やし|追加|上げ|プラス)',
+        ]
+
+        for pattern in reduce_patterns:
+            match = re.search(pattern, m)
+            if match:
+                amount = int(match.group(1)) * 10000
+                print(f"[ChatService] 削減パターン検出: amount={amount:,}円 pattern={pattern}")
+                return {'amount': amount, 'direction': 'reduce'}
+
+        for pattern in increase_patterns:
+            match = re.search(pattern, m)
+            if match:
+                amount = int(match.group(1)) * 10000
+                print(f"[ChatService] 増額パターン検出: amount={amount:,}円 pattern={pattern}")
+                return {'amount': amount, 'direction': 'increase'}
+
+        print(f"[ChatService] 金額調整パターンなし")
+        return None
+
+    # --- 提案生成（GPT-4活用） ---
+    def _generate_proposals(
+        self,
+        task_id: str,
+        target_change: int,
+        direction: str,
+        current_estimates: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        複数の調整案を生成
+
+        Returns:
+            [
+                {
+                    'id': 'proposal_1',
+                    'title': '運用マニュアルを簡素化',
+                    'description': '...',
+                    'target_amount_change': -120000,
+                    'changes': [...],
+                    'new_estimates': [...],
+                }
+            ]
+        """
+        print(f"[ChatService] _generate_proposals called: task_id={task_id}, amount={target_change}, direction={direction}, estimates={len(current_estimates)}")
+        print(f"[ChatService] _OPENAI_AVAILABLE={_OPENAI_AVAILABLE}, has_api_key={bool(getattr(settings, 'OPENAI_API_KEY', None))}")
+
+        if not _OPENAI_AVAILABLE or not getattr(settings, 'OPENAI_API_KEY', None):
+            # OpenAI未設定の場合は空配列を返す
+            print(f"[ChatService] OpenAI未設定のため提案生成をスキップ")
+            return []
+
+        # 現在の見積を整形
+        current_summary = json.dumps(
+            [
+                {
+                    "deliverable_name": e.get("deliverable_name"),
+                    "person_days": e.get("person_days"),
+                    "amount": e.get("amount"),
+                }
+                for e in current_estimates
+            ],
+            ensure_ascii=False,
+            indent=2
+        )
+
+        direction_text = '削減' if direction == 'reduce' else '増額'
+
+        # GPT-4にプロンプト送信
+        prompt = f"""あなたは見積調整の専門家です。以下の見積に対して、{direction_text}方向に約{target_change:,}円調整する提案を3つ作成してください。
+
+【現在の見積】
+{current_summary}
+
+【要求】
+- 方向: {direction_text}
+- 目標額: {target_change:,}円
+
+【出力形式】
+以下のJSON形式で3つの提案を返してください（コードブロック不要、JSONのみ）：
+{{
+  "proposals": [
+    {{
+      "title": "提案タイトル（短く）",
+      "description": "提案の概要説明",
+      "target_amount_change": -120000,
+      "changes": [
+        {{
+          "deliverable_name": "成果物名",
+          "person_days_before": 3.0,
+          "person_days_after": 1.0,
+          "amount_before": 120000,
+          "amount_after": 40000,
+          "reasoning": "変更理由を簡潔に"
+        }}
+      ]
+    }}
+  ]
+}}
+
+【重要な制約】
+1. 削減の場合：優先度が低く、リスクが少ない項目から削減（運用マニュアル、テスト、ドキュメント類が候補）
+2. 増額の場合：価値が高く、関連性がある項目を追加/強化（セキュリティ、性能、品質が候補）
+3. 各提案の合計変化額は目標額±20%以内
+4. 論理的整合性を保つ（削減理由、追加理由を明確に）
+5. 成果物名は現在の見積に存在するもののみ使用（削減の場合）
+6. 増額の場合は新規成果物追加も可（例：セキュリティ強化、性能監視、バックアップ機能など）
+7. 単価は{settings.DAILY_UNIT_COST}円/人日として計算
+"""
+
+        try:
+            print(f"[ChatService] GPT-4呼び出し開始: model={getattr(settings, 'OPENAI_MODEL', 'gpt-4o')}")
+            client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+            print(f"[ChatService] OpenAIクライアント作成完了")
+            resp = client.chat.completions.create(
+                model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o'),
+                messages=[
+                    {"role": "system", "content": "あなたは厳密なフォーマットで応答する上級PMです。JSON形式のみで返答してください。"},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=2000,
+                temperature=0.7,
+            )
+            print(f"[ChatService] GPT-4レスポンス受信完了")
+
+            content = resp.choices[0].message.content.strip()
+            print(f"[ChatService] レスポンス内容（最初の200文字）: {content[:200]}")
+
+            # JSONを抽出
+            m = re.search(r'\{.*\}', content, re.DOTALL)
+            if m:
+                print(f"[ChatService] JSON抽出成功")
+                data = json.loads(m.group(0))
+                proposals_raw = data.get("proposals", [])
+                print(f"[ChatService] 生proposals数: {len(proposals_raw)}")
+
+                # 提案ごとに完全な見積を生成
+                proposals = []
+                for i, prop in enumerate(proposals_raw[:3]):  # 最大3つ
+                    proposal_id = f"proposal_{task_id}_{i+1}"
+                    new_estimates = self._apply_changes_to_estimates(
+                        current_estimates, prop.get('changes', [])
+                    )
+
+                    # 実際の削減額を計算（現在の見積 - 新しい見積）
+                    current_subtotal = self._calc_totals(current_estimates)['subtotal']
+                    new_subtotal = self._calc_totals(new_estimates)['subtotal']
+                    actual_change = new_subtotal - current_subtotal
+
+                    print(f"[ChatService] 提案{i+1}作成: title={prop.get('title', '')}, changes={len(prop.get('changes', []))}, actual_change={actual_change:,.0f}円")
+
+                    proposals.append({
+                        'id': proposal_id,
+                        'title': prop.get('title', f'提案{i+1}'),
+                        'description': prop.get('description', ''),
+                        'target_amount_change': int(actual_change),  # 実際の変化額を使用
+                        'changes': prop.get('changes', []),
+                        'new_estimates': new_estimates,
+                    })
+
+                # キャッシュに保存
+                self._cache_proposals(task_id, proposals)
+                print(f"[ChatService] 最終proposals数: {len(proposals)}")
+
+                return proposals
+            else:
+                print(f"[ChatService] JSON抽出失敗: {content[:500]}")
+                return []
+
+        except Exception as e:
+            print(f"[ChatService] 提案生成エラー: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    # --- 変更を見積に適用 ---
+    def _apply_changes_to_estimates(
+        self,
+        current_estimates: List[Dict[str, Any]],
+        changes: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """変更を見積に適用"""
+        import copy
+        new_estimates = copy.deepcopy(current_estimates)
+
+        for change in changes:
+            deliverable_name = change.get('deliverable_name', '')
+
+            # 既存成果物の変更
+            found = False
+            for est in new_estimates:
+                if est.get('deliverable_name') == deliverable_name:
+                    est['person_days'] = float(change.get('person_days_after', 0.0))
+                    est['amount'] = float(change.get('amount_after', 0.0))
+
+                    # 変更理由を追記
+                    reasoning_notes = est.get('reasoning_notes', est.get('reasoning', ''))
+                    reasoning = change.get('reasoning', '')
+                    if reasoning:
+                        est['reasoning_notes'] = (reasoning_notes + f"\n\n【調整】{reasoning}").strip()
+
+                    found = True
+                    break
+
+            # 新規成果物の追加（増額の場合）
+            if not found and change.get('person_days_after', 0.0) > 0:
+                new_estimates.append({
+                    'deliverable_name': deliverable_name,
+                    'deliverable_description': change.get('description', ''),
+                    'person_days': float(change.get('person_days_after', 0.0)),
+                    'amount': float(change.get('amount_after', 0.0)),
+                    'reasoning': change.get('reasoning', ''),
+                    'reasoning_breakdown': change.get('reasoning', ''),
+                    'reasoning_notes': f'【追加機能】{change.get("reasoning", "")}',
+                })
+
+        # 0円の項目を除外
+        new_estimates = [e for e in new_estimates if float(e.get('amount', 0.0)) > 0]
+
+        return new_estimates
+
+    # --- 提案適用 ---
+    def _apply_proposal(self, task_id: str, proposal_id: str) -> List[Dict[str, Any]]:
+        """選択された提案を適用"""
+        proposals = self._get_cached_proposals(task_id)
+        proposal = next((p for p in proposals if p['id'] == proposal_id), None)
+
+        if not proposal:
+            raise ValueError(f"Proposal {proposal_id} not found in cache")
+
+        return proposal['new_estimates']
+
+    # --- キャッシュ管理 ---
+    def _cache_proposals(self, task_id: str, proposals: List[Dict[str, Any]]) -> None:
+        """提案をキャッシュに保存"""
+        self._proposals_cache[task_id] = proposals
+
+    def _get_cached_proposals(self, task_id: str) -> List[Dict[str, Any]]:
+        """キャッシュから提案を取得"""
+        return self._proposals_cache.get(task_id, [])
+
     def process(self, task_id: str, message: str | None, intent: str | None, params: Dict[str, Any] | None, provided_estimates: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
         # 読み込み
         if provided_estimates:
@@ -263,6 +540,8 @@ class ChatService:
                     "person_days": float(e.get("person_days", 0.0)),
                     "amount": float(e.get("amount", 0.0)),
                     "reasoning": e.get("reasoning") or "",
+                    "reasoning_breakdown": e.get("reasoning_breakdown") or "",
+                    "reasoning_notes": e.get("reasoning_notes") or "",
                 }
                 for e in provided_estimates
             ]
@@ -272,6 +551,68 @@ class ChatService:
                 return {"reply_md": "まだ見積りが作成されていません。まずはExcelをアップロードして実行してください。"}
             ests = self._as_dicts(rows)
 
+        # --- 提案適用リクエストの処理 ---
+        if intent == 'apply_proposal':
+            proposal_id = (params or {}).get('proposal_id')
+            if not proposal_id:
+                return {"reply_md": "提案IDが指定されていません。", "estimates": ests, "totals": self._calc_totals(ests)}
+
+            try:
+                new_estimates = self._apply_proposal(task_id, proposal_id)
+                totals = self._calc_totals(new_estimates)
+
+                return {
+                    "reply_md": "提案を適用しました！",
+                    "estimates": new_estimates,
+                    "totals": totals,
+                    "version": 2,
+                }
+            except Exception as e:
+                print(f"[ChatService] 提案適用エラー: {e}")
+                return {
+                    "reply_md": f"提案の適用に失敗しました: {str(e)}",
+                    "estimates": ests,
+                    "totals": self._calc_totals(ests)
+                }
+
+        # --- 金額調整リクエストの検出と提案生成 ---
+        adjustment_request = self._detect_adjustment_request(message or "") if message else None
+
+        if adjustment_request:
+            # 金額調整リクエストの場合は複数の提案を生成
+            if message:
+                self.save_user_message(task_id, message)
+
+            proposals = self._generate_proposals(
+                task_id=task_id,
+                target_change=adjustment_request['amount'],
+                direction=adjustment_request['direction'],
+                current_estimates=ests,
+            )
+
+            if proposals:
+                direction_text = '削減' if adjustment_request['direction'] == 'reduce' else '増額'
+                reply_md = f"約{adjustment_request['amount']:,}円の{direction_text}案を3つご提案いたします。\n\n以下から最適な案をお選びください。"
+
+                # 提案を返却（見積は変更しない）
+                return {
+                    "reply_md": reply_md,
+                    "proposals": proposals,
+                    "estimates": ests,  # 現在の見積を保持
+                    "totals": self._calc_totals(ests),
+                    "version": 2,
+                }
+            else:
+                # 提案生成失敗時は従来の処理にフォールバック
+                reply_md = "提案の生成に失敗しました。従来の調整方法をお試しください。"
+                return {
+                    "reply_md": reply_md,
+                    "estimates": ests,
+                    "totals": self._calc_totals(ests),
+                    "version": 2,
+                }
+
+        # --- 従来の処理（クイックアクション、ルールベース、AI調整） ---
         reply_parts = []
         if message:
             self.save_user_message(task_id, message)
