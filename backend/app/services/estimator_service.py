@@ -1,0 +1,176 @@
+import openai
+from typing import List, Dict, Any, Tuple
+import json
+import re
+from app.core.config import settings
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+import traceback
+import time
+
+class EstimatorService:
+    def __init__(self):
+        self.client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+        self.model = settings.OPENAI_MODEL
+        self.daily_unit_cost = settings.DAILY_UNIT_COST
+        
+    def generate_estimates(self, deliverables: List[Dict[str, str]], 
+                          system_requirements: str,
+                          qa_pairs: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+        """成果物ごとの見積りを生成する（並列実行で高速化）"""
+        max_workers =  int(getattr(settings, 'MAX_PARALLEL_ESTIMATES', 5)) if hasattr(settings, 'MAX_PARALLEL_ESTIMATES') else 5
+        results: List[Tuple[int, Dict[str, Any]]] = []
+
+        total_start = time.perf_counter()
+        print(f"[EST] batch start: n={len(deliverables)} max_workers={max_workers} model={self.model} unit_cost={self.daily_unit_cost}")
+
+        def worker(idx: int, d: Dict[str, str]) -> Tuple[int, Dict[str, Any]]:
+            name = d.get('name')
+            tid = threading.get_ident()
+            # リトライ付きで堅牢化
+            backoffs = [0, 1.0, 2.0]
+            last = None
+            for wait in backoffs:
+                if wait:
+                    print(f"[EST] retry in {wait:.1f}s deliverable[{idx}] tid={tid}: {name}")
+                    time.sleep(wait)
+                start = time.perf_counter()
+                try:
+                    print(f"[EST] start deliverable[{idx}] tid={tid}: {name}")
+                    est = self._estimate_single_deliverable(d, system_requirements, qa_pairs)
+                    dur = time.perf_counter() - start
+                    print(f"[EST] done  deliverable[{idx}] tid={tid}: {name} in {dur:.2f}s -> {est.get('person_days')}人日 {int(est.get('amount',0))}円")
+                    return (idx, est)
+                except Exception as e:
+                    dur = time.perf_counter() - start
+                    print(f"[EST] error deliverable[{idx}] tid={tid}: {name} after {dur:.2f}s: {e}")
+                    traceback.print_exc()
+                    last = e
+                    continue
+            # 最終フォールバック
+            print(f"[EST] fallback deliverable[{idx}] tid={tid}: {name} use default estimate (error: {last})")
+            est = {
+                'name': d.get('name'),
+                'description': d.get('description'),
+                'person_days': 5.0,
+                'amount': 5.0 * self.daily_unit_cost,
+                'reasoning': f'デフォルト見積り（リトライ失敗: {last}）'
+            }
+            return (idx, est)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            futures = [ex.submit(worker, i, d) for i, d in enumerate(deliverables)]
+            for fut in as_completed(futures):
+                results.append(fut.result())
+
+        # 元の順序に並べ替え
+        results.sort(key=lambda x: x[0])
+        total_dur = time.perf_counter() - total_start
+        print(f"[EST] batch complete in {total_dur:.2f}s")
+        return [e for _, e in results]
+    
+    def _estimate_single_deliverable(self, deliverable: Dict[str, str],
+                                   system_requirements: str,
+                                   qa_pairs: List[Dict[str, str]]) -> Dict[str, Any]:
+        """単一成果物の見積りを生成する"""
+        
+        # 質問と回答を整理
+        qa_text = "\n".join([
+            f"質問: {qa['question']}\n回答: {qa['answer']}"
+            for qa in qa_pairs
+        ])
+        
+        prompt = f"""
+あなたは経験豊富なシステム開発プロジェクトマネージャーです。
+以下の情報を基に、成果物の開発工数を見積もってください。
+
+【成果物情報】
+名称: {deliverable['name']}
+説明: {deliverable['description']}
+
+【システム要件】
+{system_requirements}
+
+【追加情報】
+{qa_text}
+
+【厳守事項】
+- 単位は必ず「人日」を使用し、数字の桁を間違えないこと（例: 4.5人日を45日と書かない）
+- reasoning内のすべての数量表記も「人日」とし、小数1桁を維持する
+- 最後に「合計: X.X人日」と1行で明記し、JSONのperson_daysと完全に一致させる
+
+【出力形式】
+次のJSONのみをコードブロックなしで返す：
+{{
+  "person_days": 小数1桁の数値（例: 4.5）, 
+  "reasoning": "根拠の詳細（Markdown可）。工程別の人日内訳と『合計: X.X人日』を必ず含める。"
+}}
+
+【見積り範囲】
+- 設計・実装・テスト・ドキュメント作成を含める
+- 成果物の複雑さを考慮した現実的な工数
+"""
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "あなたは経験豊富なシステム開発プロジェクトマネージャーです。"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=800,
+                temperature=0.3
+            )
+            
+            content = response.choices[0].message.content.strip()
+            
+            # JSONレスポンスの解析
+            try:
+                # JSON部分を抽出
+                json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group()
+                    result = json.loads(json_str)
+                    
+                    person_days = float(result.get('person_days', 5.0))
+                    reasoning = result.get('reasoning', 'AIによる見積り')
+                else:
+                    # JSONが見つからない場合のフォールバック
+                    person_days = 5.0
+                    reasoning = content
+                    
+            except (json.JSONDecodeError, ValueError):
+                person_days = 5.0
+                reasoning = content
+                
+        except Exception as e:
+            print(f"AI見積りでエラーが発生しました: {e}")
+            person_days = 5.0
+            reasoning = "デフォルト見積り（AIエラーのため）"
+        
+        # 推敲: reasoning末尾に合計の明記がなければ追記（JSONのperson_daysと整合）
+        if reasoning and '合計:' not in reasoning:
+            reasoning = reasoning.rstrip() + f"\n\n合計: {person_days:.1f}人日"
+
+        # 金額計算
+        amount = person_days * self.daily_unit_cost
+        
+        return {
+            'name': deliverable['name'],
+            'description': deliverable['description'],
+            'person_days': person_days,
+            'amount': amount,
+            'reasoning': reasoning
+        }
+    
+    def calculate_totals(self, estimates: List[Dict[str, Any]]) -> Dict[str, float]:
+        """合計金額、税額、総額を計算する"""
+        subtotal = sum(estimate['amount'] for estimate in estimates)
+        tax = subtotal * 0.1  # 10%の税率
+        total = subtotal + tax
+        
+        return {
+            'subtotal': subtotal,
+            'tax': tax,
+            'total': total
+        }

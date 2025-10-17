@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="ja" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI見積りシステム Web</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Markdown render + sanitize -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <!-- Charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f8fafc', 100: '#eef2ff', 200: '#dbeafe', 300: '#bfdbfe',
+              400: '#93c5fd', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8',
+              800: '#0f172a', 900: '#0b1220'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .hidden { display:none; }
+    /* テキストエリア/チャット入力は黒枠に */
+    textarea,
+    #chat-input { border:1px solid #000 !important; }
+    @keyframes flashUp {
+      0% { background-color: rgba(16,185,129,0.18); }
+      50% { background-color: rgba(16,185,129,0.06); }
+      100% { background-color: rgba(16,185,129,0.18); }
+    }
+    @keyframes flashDown {
+      0% { background-color: rgba(244,63,94,0.18); }
+      50% { background-color: rgba(244,63,94,0.06); }
+      100% { background-color: rgba(244,63,94,0.18); }
+    }
+    .diff-up { animation: flashUp 0.9s ease-in-out 2; }
+    .diff-down { animation: flashDown 0.9s ease-in-out 2; }
+  </style>
+  <script>
+    const API_BASE = `${location.origin}`;
+    let currentTaskId = null;
+
+    function showSpinner(show) {
+      const el = document.getElementById('spinner');
+      if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+    }
+
+    function toast(message, type = 'info', opts = {}) {
+      const { sticky = (type === 'error'), duration = (type === 'error' ? 12000 : 6000), details = '' } = opts;
+      const wrap = document.getElementById('toasts');
+
+      const t = document.createElement('div');
+      const base = 'relative px-4 py-3 rounded shadow text-white mb-2 max-w-[92vw] md:max-w-[560px] break-words whitespace-pre-wrap transition-opacity';
+      const bg = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-slate-800';
+      t.className = `${base} ${bg}`;
+      t.setAttribute('role', 'status');
+      t.setAttribute('aria-live', 'polite');
+
+      const title = document.createElement('div');
+      title.textContent = message;
+      t.appendChild(title);
+
+      if (details && String(details).trim()) {
+        const btnRow = document.createElement('div');
+        btnRow.className = 'mt-2 flex gap-2 text-xs';
+
+        const moreBtn = document.createElement('button');
+        moreBtn.className = 'px-2 py-1 rounded bg-white/20 hover:bg-white/30';
+        moreBtn.textContent = '詳細';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'px-2 py-1 rounded bg-white/20 hover:bg-white/30';
+        copyBtn.textContent = 'コピー';
+
+        const pre = document.createElement('pre');
+        pre.className = 'mt-2 max-h-64 overflow-auto text-white/90 text-[11px] border-t border-white/20 pt-2';
+        pre.textContent = String(details).slice(0, 4000);
+        pre.style.display = 'none';
+
+        moreBtn.onclick = () => {
+          pre.style.display = (pre.style.display === 'none') ? 'block' : 'none';
+        };
+        copyBtn.onclick = async () => {
+          try { await navigator.clipboard.writeText(pre.textContent); moreBtn.textContent = '詳細'; } catch(e) {}
+        };
+
+        btnRow.appendChild(moreBtn);
+        btnRow.appendChild(copyBtn);
+        t.appendChild(btnRow);
+        t.appendChild(pre);
+      }
+
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'absolute top-1 right-2 text-white/80 hover:text-white';
+      closeBtn.textContent = '×';
+      closeBtn.onclick = () => t.remove();
+      t.appendChild(closeBtn);
+
+      wrap.appendChild(t);
+
+      if (!sticky) {
+        setTimeout(() => { t.classList.add('opacity-0'); }, Math.max(1000, duration - 600));
+        setTimeout(() => { try { t.remove(); } catch(e) {} }, duration);
+      }
+    }
+
+    async function createTask() {
+      const f = document.getElementById('file');
+      const sysreq = document.getElementById('system_requirements').value;
+      if (!f.files[0]) { alert('Excelファイルを選択してください'); return; }
+      const fd = new FormData();
+      fd.append('file', f.files[0]);
+      fd.append('system_requirements', sysreq);
+      showSpinner(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/tasks`, { method: 'POST', body: fd, credentials:'include' });
+        if (!res.ok) {
+          const t = await res.text().catch(()=> '');
+          toast('タスク作成に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          return;
+        }
+        const task = await res.json();
+        currentTaskId = task.id;
+        document.getElementById('taskId').textContent = task.id;
+        document.getElementById('step-qa').classList.remove('hidden');
+        await loadQuestions();
+      } catch (e) {
+        toast('タスク作成に失敗しました', 'error', { details: e?.message||String(e) });
+      } finally { showSpinner(false); }
+    }
+
+    async function loadQuestions() {
+      if (!currentTaskId) return;
+      showSpinner(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/tasks/${currentTaskId}/questions`, { credentials:'include' });
+        if (!res.ok) {
+          const t = await res.text().catch(()=> '');
+          toast('質問取得に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          return;
+        }
+        const qs = await res.json();
+        const container = document.getElementById('questions');
+        container.innerHTML = '';
+        qs.forEach((q, i) => {
+          const wrap = document.createElement('div');
+          wrap.className = 'rounded-lg border border-slate-200 p-4 bg-white';
+          wrap.innerHTML = `
+            <div class="text-sm text-slate-500 mb-1">質問${i+1}</div>
+            <div class="text-slate-800 font-medium mb-3">${q}</div>
+            <label class="text-slate-600 text-sm">回答</label>
+            <textarea rows="2" data-qa-index="${i}" data-question="${q.replace(/"/g,'&quot;')}"
+              class="mt-1 w-full rounded border-slate-300 focus:border-brand-500 focus:ring-brand-500"></textarea>
+          `;
+          container.appendChild(wrap);
+        });
+      } catch (e) {
+        toast('質問取得に失敗しました', 'error', { details: e?.message||String(e) });
+      } finally { showSpinner(false); }
+    }
+
+    async function submitAnswers() {
+      if (!currentTaskId) return;
+      const areas = document.querySelectorAll('#questions textarea');
+      const qa_pairs = Array.from(areas).map((ta) => ({
+        question: ta.dataset.question || '',
+        answer: ta.value || ''
+      }));
+      showSpinner(true);
+      try {
+        // 同期処理: 返答が来るまでスピナー表示
+        const res = await fetch(`${API_BASE}/api/v1/tasks/${currentTaskId}/answers`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(qa_pairs), credentials:'include'
+        });
+        if (!res.ok) {
+          const t = await res.text().catch(()=> '');
+          toast('見積り実行に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          return;
+        }
+        await loadResult();
+      } catch (e) {
+        toast('見積り実行に失敗しました', 'error', { details: e?.message||String(e) });
+      } finally { showSpinner(false); }
+    }
+
+    async function loadResult() {
+      if (!currentTaskId) return;
+      const res = await fetch(`${API_BASE}/api/v1/tasks/${currentTaskId}/result`, { credentials:'include' });
+      if (!res.ok) { alert('結果取得に失敗しました: ' + (await res.text())); return; }
+      const data = await res.json();
+      const tbody = document.getElementById('result-body');
+      const cards = document.getElementById('result-cards');
+      tbody.innerHTML = '';
+      cards.innerHTML = '';
+      data.estimates.forEach(item => {
+        const name = item.deliverable_name || item.name || '';
+        const desc = item.deliverable_description || item.description || '';
+        const pd = Number(item.person_days || 0).toFixed(1);
+        const amt = Math.round(item.amount || 0).toLocaleString();
+        const md = (item.reasoning || "").toString();
+        const htmlReason = DOMPurify.sanitize(marked.parse(md));
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-3 py-2">${name}</td>
+          <td class="px-3 py-2 text-slate-600">${desc}</td>
+          <td class="px-3 py-2 text-right tabular-nums">${pd}</td>
+          <td class="px-3 py-2 text-right tabular-nums">${amt}</td>
+          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlReason}</td>`;
+        tbody.appendChild(tr);
+
+        const card = document.createElement('div');
+        card.className = 'rounded-lg border border-slate-200 p-4 bg-white';
+        card.innerHTML = `
+          <div class="font-medium text-slate-900 mb-1">${name}</div>
+          <div class="text-slate-600 text-sm mb-2">${desc}</div>
+          <div class="flex justify-between text-sm">
+            <div class="text-slate-500">工数(人日)</div>
+            <div class="font-semibold tabular-nums">${pd}</div>
+          </div>
+          <div class="flex justify-between text-sm mt-1">
+            <div class="text-slate-500">金額</div>
+            <div class="font-semibold tabular-nums">${amt}</div>
+          </div>
+          ${item.reasoning ? `<div class="text-slate-500 text-xs mt-3">${item.reasoning}</div>` : ''}
+        `;
+        cards.appendChild(card);
+      });
+      document.getElementById('subtotal').textContent = Math.round(data.subtotal).toLocaleString();
+      document.getElementById('tax').textContent = Math.round(data.tax).toLocaleString();
+      document.getElementById('total').textContent = Math.round(data.total).toLocaleString();
+      // 旧実装の<a id="download">は存在しないためhref設定を削除
+      const dlBtn = document.getElementById('downloadBtn');
+      if (dlBtn) { dlBtn.disabled = false; dlBtn.classList.remove('opacity-50','pointer-events-none'); }
+      document.getElementById('step-result').classList.remove('hidden');
+      toast('見積りが完了しました', 'success');
+      renderChart(data.estimates);
+      window.initialEstimates = JSON.parse(JSON.stringify(data.estimates||[]));
+      window.lastEstimates = JSON.parse(JSON.stringify(data.estimates||[]));
+      // 見積り調整エリアを表示
+      const adjust = document.getElementById('adjust');
+      if (adjust) adjust.classList.remove('hidden');
+    }
+
+    // --- Chart ---
+    let estChart = null;
+    function renderChart(estimates, prevEstimates=null) {
+      try {
+        const ctx = document.getElementById('est-chart').getContext('2d');
+        const labels = estimates.map(e => e.deliverable_name || e.name || '');
+        const amountsNew = estimates.map(e => Math.round(e.amount || 0));
+        if (!estChart) {
+          const bg = labels.map((_, i) => `hsl(${(i*57)%360} 70% 60%)`);
+          estChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: labels.slice(), datasets: [{ label: '金額(円)', data: amountsNew.slice(), backgroundColor: bg }] },
+            options: {
+              responsive: true,
+              animation: { duration: 400, easing: 'easeOutCubic' },
+              plugins: { legend: { display: false } },
+              scales: { y: { ticks: { callback: v => v.toLocaleString() } } }
+            }
+          });
+          return;
+        }
+        // Update labels
+        estChart.data.labels = labels.slice();
+        const amountsOldBase = (estChart.data.datasets[0].data || []).map(v => Number(v)||0);
+        const changed = new Set();
+        amountsNew.forEach((v,i)=>{ if ((amountsOldBase[i]||0) !== v) changed.add(i); });
+        const frames = [0.85, 1.12, 1.0];
+        const stepDur = 220;
+        frames.forEach((f, idx) => {
+          setTimeout(() => {
+            const next = amountsNew.map((nv, i) => {
+              const ov = amountsOldBase[i] || 0;
+              if (!changed.has(i)) return nv;
+              const target = ov + (nv - ov) * f;
+              return Math.max(0, Math.round(target));
+            });
+            estChart.data.datasets[0].data = next;
+            estChart.options.animation = { duration: stepDur, easing: 'easeOutCubic' };
+            estChart.update();
+          }, idx * (stepDur + 60));
+        });
+      } catch (e) { /* noop */ }
+    }
+
+    // --- Quick actions / Chat ---
+    function parseNumberLike(s, allowFloat=false) {
+      if (s == null) return NaN;
+      const t = String(s).replace(/[,￥円\s]/g, '').replace('%','');
+      const n = allowFloat ? parseFloat(t) : parseInt(t, 10);
+      return isNaN(n) ? NaN : n;
+    }
+    async function quickAction(intent, params) {
+      if (!currentTaskId) return;
+      function parseNumberLike(s, allowFloat=false){ if(s==null) return NaN; const t=String(s).replace(/[,￥円\s]/g,'').replace('%',''); const n=allowFloat?parseFloat(t):parseInt(t,10); return isNaN(n)?NaN:n; }
+      if (intent === 'fit_budget') { const raw=document.getElementById('qa-cap').value; const cap=parseNumberLike(raw,false); if(!cap||cap<=0){ toast('上限金額を正しく入力してください','error'); return;} params={cap}; } else if (intent==='unit_cost_change'){ const raw=document.getElementById('qa-unit').value; const unit_cost=parseNumberLike(raw,false); if(!unit_cost||unit_cost<=0){ toast('単価を正しく入力してください','error'); return;} params={unit_cost}; } else if (intent==='risk_buffer'){ const raw=document.getElementById('qa-risk').value; const percent=parseNumberLike(raw,true); if(isNaN(percent)){ toast('リスク%を正しく入力してください','error'); return;} params={percent}; }
+      if (!currentTaskId) return;
+      // sanitize known params
+      if (intent === 'fit_budget') {
+        const raw = document.getElementById('qa-cap').value;
+        const cap = parseNumberLike(raw, false);
+        if (!cap || cap <= 0) { toast('上限金額を正しく入力してください', 'error'); return; }
+        params = { cap };
+      } else if (intent === 'unit_cost_change') {
+        const raw = document.getElementById('qa-unit').value;
+        const unit_cost = parseNumberLike(raw, false);
+        if (!unit_cost || unit_cost <= 0) { toast('単価を正しく入力してください', 'error'); return; }
+        params = { unit_cost };
+      } else if (intent === 'risk_buffer') {
+        const raw = document.getElementById('qa-risk').value;
+        const percent = parseNumberLike(raw, true);
+        if (isNaN(percent)) { toast('リスク%を正しく入力してください', 'error'); return; }
+        params = { percent };
+      }
+      showSpinner(true);
+      try {
+        console.log('[UI] quickAction start', { intent, params, taskId: currentTaskId });
+        const res = await fetch(`${API_BASE}/api/v1/tasks/${currentTaskId}/chat`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ intent, params, estimates: (window.lastEstimates||[]) }), credentials:'include'
+        });
+        if (!res.ok) {
+          const t = await res.text().catch(()=> '');
+          toast('見積り調整に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          return;
+        }
+        const data = await res.json();
+        console.log('[UI] quickAction ok', { estimates: (data&&data.estimates)? data.estimates.length: 0 });
+        try {
+          const rep = document.getElementById('chat-reply');
+          if (rep && data && data.reply_md) {
+            rep.innerHTML = DOMPurify.sanitize(marked.parse(String(data.reply_md)));
+          }
+        } catch(_){}
+        updateEstimatesView(data);
+        if (data && data.suggestions) renderSuggestions(data.suggestions);
+        toast('見積りを調整しました', 'success');
+      } catch (e) { toast('見積り調整に失敗しました', 'error', { details: e?.message||String(e) }); }
+      finally { showSpinner(false); }
+    }
+
+    async function sendChat() {
+      if (!currentTaskId) return;
+      const msg = document.getElementById('chat-input').value.trim();
+      if (!msg) { toast('メッセージを入力してください', 'error'); return; }
+      showSpinner(true);
+      try {
+        console.log('[UI] sendChat start', { taskId: currentTaskId, msg });
+        const res = await fetch(`${API_BASE}/api/v1/tasks/${currentTaskId}/chat`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg, estimates: (window.lastEstimates||[]) }), credentials:'include'
+        });
+        if (!res.ok) {
+          const t = await res.text().catch(()=> '');
+          toast('送信に失敗しました', 'error', { details: `${res.status} ${res.statusText}\n${t}` });
+          return;
+        }
+        const data = await res.json();
+        console.log('[UI] sendChat ok', { estimates: (data&&data.estimates)? data.estimates.length: 0 });
+        try {
+          const rep = document.getElementById('chat-reply');
+          if (rep && data && data.reply_md) {
+            rep.innerHTML = DOMPurify.sanitize(marked.parse(String(data.reply_md)));
+          }
+        } catch(_){}
+        updateEstimatesView(data, true);
+        if (data && data.suggestions) renderSuggestions(data.suggestions);
+        document.getElementById('chat-input').value='';
+      } catch (e) { toast('送信に失敗しました', 'error', { details: e?.message||String(e) }); }
+      finally { showSpinner(false); }
+    }
+
+    function renderSuggestions(suggestions){
+      try {
+        const wrap = document.getElementById('chat-suggestions');
+        if (!wrap) return;
+        wrap.innerHTML='';
+        (suggestions||[]).forEach(s => {
+          const btn = document.createElement('button');
+          btn.className = 'px-2 py-1 text-xs rounded border border-slate-300 hover:bg-slate-100';
+          btn.textContent = s.label || '提案';
+          btn.onclick = () => runSuggestion(s.payload||{});
+          wrap.appendChild(btn);
+        });
+      } catch(e) {}
+    }
+
+    async function runSuggestion(payload){
+      try {
+        if (payload.intent) {
+          await quickAction(payload.intent, payload.params||{});
+          return;
+        }
+        if (payload.message) {
+          const input = document.getElementById('chat-input');
+          input.value = payload.message;
+          await sendChat();
+          return;
+        }
+      } catch(e) { toast('提案の適用に失敗しました', 'error', { details: e?.message||String(e) }); }
+    }
+
+    // duplicate updateEstimatesView removed (using enhanced version later)
+
+
+    async function applyAdjustments() {
+      if (!currentTaskId) return;
+      const ests = window.lastEstimates;
+      if (!ests || !ests.length) { toast('先に見積り調整を行ってください', 'error'); return; }
+      showSpinner(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/tasks/${currentTaskId}/apply`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estimates: ests }), credentials:'include'
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        updateEstimatesView(data);
+        toast('調整を適用し、Excelを再出力しました', 'success');
+      } catch (e) { toast('適用に失敗しました', 'error'); }
+      finally { showSpinner(false); }
+    }
+  </script>
+</head>
+<body class="h-full bg-slate-50">
+  <div id="toasts" class="fixed right-4 top-4 z-[10000] flex flex-col"></div>
+  <header class="bg-white border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-md bg-brand-600 flex items-center justify-center text-white font-bold">AI</div>
+        <div class="text-slate-900 font-semibold">AI見積りシステム</div>
+      </div>
+      <div class="hidden sm:block text-slate-500 text-sm">Excelからプロ品質の見積を自動生成</div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    <section class="mb-6">
+      <div class="rounded-xl bg-gradient-to-r from-brand-800 to-brand-600 text-white p-6">
+        <h1 class="text-2xl sm:text-3xl font-semibold mb-2">見積り作成を、もっと速く正確に。</h1>
+        <p class="text-white/90">Excelの成果物リストをアップロードし、質問に答えるだけ。AIが工数と金額を提示します。</p>
+        <div class="mt-4 flex items-center gap-3 flex-wrap">
+          <a href="/api/v1/sample-input" download class="inline-flex items-center gap-2 bg-white text-brand-700 hover:bg-slate-100 rounded-md px-4 py-2 text-sm font-medium">サンプルExcelをダウンロード</a>
+          <span class="text-white/80 text-xs">A列:名称 / B列:説明 のシンプル構成</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <section id="step-upload" class="rounded-xl border border-slate-200 bg-white p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold text-slate-900">1. Excelをアップロード</h2>
+          <span class="text-xs text-slate-500">タスクID: <span id="taskId">-</span></span>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="text-sm text-slate-700">Excelファイル（.xlsx/.xls）</label>
+            <input id="file" type="file" accept=".xlsx,.xls" class="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-600 file:text-white hover:file:bg-brand-700" />
+          </div>
+          <div>
+            <label class="text-sm text-slate-700">システム要件（任意）</label>
+            <textarea id="system_requirements" rows="4" class="mt-1 w-full rounded border-slate-300 focus:border-brand-500 focus:ring-brand-500" placeholder="例: Webシステム。最大同時100接続、AWS(ECS/RDS)、Salesforce連携など"></textarea>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="createTask()" class="inline-flex items-center bg-brand-600 hover:bg-brand-700 text-white rounded-md px-4 py-2 text-sm font-medium">タスク作成</button>
+            <span class="text-xs text-slate-500">アップロード後、自動で質問を生成します</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="step-qa" class="rounded-xl border border-slate-200 bg-white p-5 hidden">
+        <h2 class="text-lg font-semibold text-slate-900 mb-3">2. 質問に回答</h2>
+        <div id="questions" class="space-y-3"></div>
+        <div class="mt-4">
+          <button onclick="submitAnswers()" class="inline-flex items-center bg-brand-600 hover:bg-brand-700 text-white rounded-md px-4 py-2 text-sm font-medium">見積りを実行</button>
+        </div>
+      </section>
+    </div>
+
+    <section id="step-result" class="rounded-xl border border-slate-200 bg-white p-5 mt-6 hidden">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold text-slate-900">3. 見積り結果</h2>
+        <button id="downloadBtn" class="inline-flex items-center bg-slate-900 hover:bg-slate-800 text-white rounded-md px-3 py-2 text-xs font-medium" onclick="downloadExcel()">Excelをダウンロード</button>
+      </div>
+      <div class="hidden md:block overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-slate-50 text-slate-600">
+            <tr>
+              <th class="px-3 py-2 text-left font-medium">成果物</th>
+              <th class="px-3 py-2 text-left font-medium">説明</th>
+              <th class="px-3 py-2 text-right font-medium">工数(人日)</th>
+              <th class="px-3 py-2 text-right font-medium">金額</th>
+              <th class="px-3 py-2 text-left font-medium">根拠</th>
+            </tr>
+          </thead>
+          <tbody id="result-body" class="divide-y divide-slate-100 bg-white"></tbody>
+        </table>
+      </div>
+      <div id="result-cards" class="md:hidden grid grid-cols-1 gap-3"></div>
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="rounded-lg border border-slate-200 p-3 bg-slate-50">
+          <div class="text-xs text-slate-500">小計</div>
+          <div class="text-lg font-semibold tabular-nums" id="subtotal">-</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 p-3 bg-slate-50">
+          <div class="text-xs text-slate-500">税額(10%)</div>
+          <div class="text-lg font-semibold tabular-nums" id="tax">-</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 p-3 bg-slate-50">
+          <div class="text-xs text-slate-500">総額</div>
+          <div class="text-lg font-semibold tabular-nums" id="total">-</div>
+        </div>
+      </div>
+      <div class="mt-6">
+        <canvas id="est-chart" height="120"></canvas>
+      </div>
+    </section>
+
+    <section id="adjust" class="rounded-xl border border-slate-200 bg-white p-5 mt-6 hidden">
+      <h2 class="text-lg font-semibold text-slate-900 mb-3">見積り調整</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-3">
+          <div class="text-sm font-semibold text-slate-800 mb-1">クイック見積調整（機械的適用）</div>
+          <div class="text-xs text-slate-500 -mt-2 mb-2">現在表示中の見積を前提に、上限予算・単価・リスク・機能除外を連続適用します。</div>
+          <div class="flex items-center gap-2">
+            <input id="qa-cap" type="number" placeholder="上限金額（円）" class="w-40 rounded border-slate-300" />
+            <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('fit_budget',{cap:Number(document.getElementById('qa-cap').value||0)})">上限予算に合わせる</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <input id="qa-unit" type="number" placeholder="単価（円/人日）" class="w-40 rounded border-slate-300" />
+            <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('unit_cost_change',{unit_cost:Number(document.getElementById('qa-unit').value||40000)})">単価を変更</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <input id="qa-risk" type="number" placeholder="リスク%" class="w-32 rounded border-slate-300" />
+            <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('risk_buffer',{percent:Number(document.getElementById('qa-risk').value||10)})">リスクバッファ追加</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <input id="qa-scope" type="text" placeholder="除外キーワード（,区切り）" class="w-80 rounded border-slate-300" />
+            <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('scope_reduce',{keywords:(document.getElementById('qa-scope').value||'').split(',')})">機能を絞る</button>
+          </div>
+        </div>
+        <div>
+          <div class="text-sm font-semibold text-slate-800 mb-1">AI見積調整（自由入力）</div>
+          <div class="text-xs text-slate-500 -mt-2 mb-2">ご要望を自然文で入力すると、AIが調整案を提示します。</div>
+          <div class="flex gap-2">
+            <input id="chat-input" class="flex-1 rounded border-slate-300" placeholder="例: 初期リリースは管理画面を除外して、予算内に抑えたい" />
+            <button class="px-3 py-2 text-sm rounded bg-brand-600 text-white" onclick="sendChat()">送信</button>
+          </div>
+          <div id="chat-suggestions" class="mt-3 flex flex-wrap gap-2"></div>
+          <div id="chat-reply" class="mt-3 text-sm text-slate-700 prose prose-slate max-w-none"></div>
+        </div>
+        <div class="mt-4">
+          <button class="px-4 py-2 text-sm rounded bg-emerald-600 text-white" onclick="applyAdjustments()">調整案を反映（Excel再出力）</button>
+          <button class="px-4 py-2 text-sm rounded bg-slate-200 text-slate-800" onclick="(function(){ if(!window.initialEstimates){ toast('初期見積が見つかりません','error'); return;} const data={ estimates: JSON.parse(JSON.stringify(window.initialEstimates)) }; updateEstimatesView(data); toast('最初の見積内容に戻しました','success'); })()">最初の見積内容に戻す</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="spinner" class="hidden fixed inset-0 z-[9999] bg-white/70 backdrop-blur-sm flex items-center justify-center">
+    <div class="flex items-center gap-3">
+      <svg class="animate-spin h-6 w-6 text-brand-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+      </svg>
+      <div class="text-slate-700 text-sm">AIが見積りを作成しています…（1分前後）</div>
+    </div>
+  </div>
+  <script>
+    // Global error handlers to surface JS errors in UI
+    window.addEventListener('error', (ev) => {
+      try { toast('スクリプトエラーが発生しました', 'error', { details: `${ev.message}\n${ev.filename}:${ev.lineno}:${ev.colno}` }); } catch(_) {}
+    });
+    window.addEventListener('unhandledrejection', (ev) => {
+      try { const msg = (ev.reason && (ev.reason.stack||ev.reason.message)) || String(ev.reason);
+        toast('未処理のエラーが発生しました', 'error', { details: msg }); } catch(_) {}
+    });
+    async function downloadExcel(){
+      try {
+        if (!currentTaskId) { toast('タスクが未作成です', 'error'); return; }
+        const url = `${API_BASE}/api/v1/tasks/${currentTaskId}/download`;
+        const res = await fetch(url, { credentials:'include' });
+        if(!res.ok) { const t=await res.text().catch(()=> ''); throw new Error(`${res.status} ${res.statusText}\n${t}`); }
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        const objectUrl = URL.createObjectURL(blob);
+        a.href = objectUrl;
+        a.download = `estimate_${Date.now()}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(objectUrl);
+        toast('Excelのダウンロードを開始しました', 'success');
+      } catch(e){ toast('Excelのダウンロードに失敗しました', 'error', { details: e?.message||String(e) }); }
+    }
+  </script>
+  <script>
+    // override: enhanced diff rendering + chart vibration
+    function updateEstimatesView(apiData, fromChat=false) {
+      if (!apiData || !apiData.estimates) return;
+      const ests = apiData.estimates;
+      const prev = (window.prevEstimates || window.lastEstimates || []);
+      window.lastEstimates = ests;
+      window.prevEstimates = JSON.parse(JSON.stringify(ests));
+      const prevMap = new Map();
+      try { (prev||[]).forEach(e => prevMap.set((e.deliverable_name||e.name||''), e)); } catch(_) {}
+      const tbody = document.getElementById('result-body');
+      const cards = document.getElementById('result-cards');
+      tbody.innerHTML=''; cards.innerHTML='';
+      let changedCount = 0;
+      ests.forEach(item => {
+        const name = item.deliverable_name || item.name || '';
+        const desc = item.deliverable_description || item.description || '';
+        const pdNum = Number(item.person_days || 0);
+        const pd = pdNum.toFixed(1);
+        const amtNum = Math.round(item.amount || 0);
+        const amt = amtNum.toLocaleString();
+        const md = (item.reasoning || '').toString();
+        const htmlReason = DOMPurify.sanitize(marked.parse(md));
+        const prevItem = prevMap.get(name);
+        let deltaPd = 0, deltaAmt = 0;
+        if (prevItem) {
+          deltaPd = Number(pdNum - Number(prevItem.person_days||0));
+          deltaAmt = Math.round(amtNum - Math.round(prevItem.amount||0));
+        }
+        const changed = Math.abs(deltaPd) >= 0.1 || Math.abs(deltaAmt) >= 1;
+        if (changed) changedCount++;
+        const pdBadge = changed && Math.abs(deltaPd) >= 0.1 ? `<span class="ml-2 text-xs ${deltaPd>0?'text-rose-600':'text-emerald-600'}">${deltaPd>0?'+':''}${deltaPd.toFixed(1)}</span>` : '';
+        const amtBadge = changed && Math.abs(deltaAmt) >= 1 ? `<span class="ml-2 text-xs ${deltaAmt>0?'text-rose-600':'text-emerald-600'}">${deltaAmt>0?'+':''}${deltaAmt.toLocaleString()}</span>` : '';
+        const rowDiffClass = changed ? (deltaAmt>0 || deltaPd>0 ? 'diff-down' : 'diff-up') : '';
+
+        const tr = document.createElement('tr');
+        tr.className = rowDiffClass;
+        tr.innerHTML = `
+          <td class="px-3 py-2">${name}</td>
+          <td class="px-3 py-2 text-slate-600">${desc}</td>
+          <td class="px-3 py-2 text-right tabular-nums">${pd}${pdBadge}</td>
+          <td class="px-3 py-2 text-right tabular-nums">${amt}${amtBadge}</td>
+          <td class="px-3 py-2 text-slate-600 prose prose-slate max-w-none">${htmlReason}</td>`;
+        tbody.appendChild(tr);
+
+        const card = document.createElement('div');
+        card.className = 'rounded-lg border border-slate-200 p-4 bg-white';
+        card.innerHTML = `
+          <div class="font-medium text-slate-900 mb-1">${name}</div>
+          <div class="text-slate-600 text-sm mb-2">${desc}</div>
+          <div class="flex justify-between text-sm">
+            <div class="text-slate-500">工数(人日)</div>
+            <div class="font-semibold tabular-nums">${pd} ${pdBadge}</div>
+          </div>
+          <div class="flex justify-between text-sm mt-1">
+            <div class="text-slate-500">金額</div>
+            <div class="font-semibold tabular-nums">${amt} ${amtBadge}</div>
+          </div>
+          ${md ? `<div class="text-slate-700 text-xs mt-3 prose prose-slate max-w-none">${htmlReason}</div>` : ''}
+        `;
+        cards.appendChild(card);
+      });
+
+      // 合計更新
+      if (apiData.totals) {
+        document.getElementById('subtotal').textContent = Math.round(apiData.totals.subtotal).toLocaleString();
+        document.getElementById('tax').textContent = Math.round(apiData.totals.tax).toLocaleString();
+        document.getElementById('total').textContent = Math.round(apiData.totals.total).toLocaleString();
+      } else {
+        const subtotal = (ests||[]).reduce((a,c)=>a+Math.round(c.amount||0),0);
+        const tax = Math.round(subtotal*0.1);
+        const total = subtotal + tax;
+        document.getElementById('subtotal').textContent = subtotal.toLocaleString();
+        document.getElementById('tax').textContent = tax.toLocaleString();
+        document.getElementById('total').textContent = total.toLocaleString();
+      }
+
+      // 棒グラフを疑似振動で更新（色は固定）
+      renderChart(ests, (prev && prev.length)? prev : null);
+    }
+  </script>
+</body>
+</html>
