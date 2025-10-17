@@ -836,19 +836,19 @@
             <div class="text-sm font-semibold text-slate-800 mb-1" data-i18n="ui.label_quick_adjust">クイック見積調整（機械的適用）</div>
             <div class="text-xs text-slate-500 -mt-2 mb-2" data-i18n="ui.hint_quick_adjust_description">現在表示中の見積を前提に、上限予算・単価・リスク・機能除外を連続適用します。</div>
             <div class="flex items-center gap-2">
-              <input id="qa-cap" type="number" data-i18n-placeholder="ui.placeholder_budget_cap_input" placeholder="上限金額（円）" class="w-40 rounded border-slate-300" />
+              <input id="qa-cap" type="number" data-i18n-placeholder="ui.placeholder_budget_cap_input" placeholder="上限金額（円）" class="w-64 rounded border-slate-300" />
               <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('fit_budget',{cap:Number(document.getElementById('qa-cap').value||0)})" data-i18n="ui.button_fit_budget">上限予算に合わせる</button>
             </div>
             <div class="flex items-center gap-2">
-              <input id="qa-unit" type="number" data-i18n-placeholder="ui.placeholder_unit_cost_input" placeholder="単価（円/人日）" class="w-40 rounded border-slate-300" />
+              <input id="qa-unit" type="number" data-i18n-placeholder="ui.placeholder_unit_cost_input" placeholder="単価（円/人日）" class="w-64 rounded border-slate-300" />
               <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('unit_cost_change',{unit_cost:Number(document.getElementById('qa-unit').value||40000)})" data-i18n="ui.button_change_unit_cost">単価を変更</button>
             </div>
             <div class="flex items-center gap-2">
-              <input id="qa-risk" type="number" data-i18n-placeholder="ui.placeholder_risk_percent_input" placeholder="リスク%" class="w-32 rounded border-slate-300" />
+              <input id="qa-risk" type="number" data-i18n-placeholder="ui.placeholder_risk_percent_input" placeholder="リスク%" class="w-64 rounded border-slate-300" />
               <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('risk_buffer',{percent:Number(document.getElementById('qa-risk').value||10)})" data-i18n="ui.button_add_risk_buffer">リスクバッファ追加</button>
             </div>
             <div class="flex items-center gap-2">
-              <input id="qa-scope" type="text" data-i18n-placeholder="ui.placeholder_scope_keywords_input" placeholder="除外キーワード（,区切り）" class="w-80 rounded border-slate-300" />
+              <input id="qa-scope" type="text" data-i18n-placeholder="ui.placeholder_scope_keywords_input" placeholder="除外キーワード（,区切り）" class="w-64 rounded border-slate-300" />
               <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('scope_reduce',{keywords:(document.getElementById('qa-scope').value||'').split(',')})" data-i18n="ui.button_reduce_scope">機能を絞る</button>
             </div>
           </div>
