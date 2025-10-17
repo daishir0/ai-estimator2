@@ -578,6 +578,47 @@
         <canvas id="est-chart" height="120"></canvas>
       </div>
 
+      <!-- 見積り調整 -->
+      <div id="adjust" class="mb-6 pb-6 border-b border-slate-200">
+        <h3 class="text-base font-semibold text-slate-900 mb-3">見積り調整</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-3">
+            <div class="text-sm font-semibold text-slate-800 mb-1">クイック見積調整（機械的適用）</div>
+            <div class="text-xs text-slate-500 -mt-2 mb-2">現在表示中の見積を前提に、上限予算・単価・リスク・機能除外を連続適用します。</div>
+            <div class="flex items-center gap-2">
+              <input id="qa-cap" type="number" placeholder="上限金額（円）" class="w-40 rounded border-slate-300" />
+              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('fit_budget',{cap:Number(document.getElementById('qa-cap').value||0)})">上限予算に合わせる</button>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="qa-unit" type="number" placeholder="単価（円/人日）" class="w-40 rounded border-slate-300" />
+              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('unit_cost_change',{unit_cost:Number(document.getElementById('qa-unit').value||40000)})">単価を変更</button>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="qa-risk" type="number" placeholder="リスク%" class="w-32 rounded border-slate-300" />
+              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('risk_buffer',{percent:Number(document.getElementById('qa-risk').value||10)})">リスクバッファ追加</button>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="qa-scope" type="text" placeholder="除外キーワード（,区切り）" class="w-80 rounded border-slate-300" />
+              <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('scope_reduce',{keywords:(document.getElementById('qa-scope').value||'').split(',')})">機能を絞る</button>
+            </div>
+          </div>
+          <div>
+            <div class="text-sm font-semibold text-slate-800 mb-1">AI見積調整（自由入力）</div>
+            <div class="text-xs text-slate-500 -mt-2 mb-2">ご要望を自然文で入力すると、AIが調整案を提示します。</div>
+            <div class="flex gap-2">
+              <input id="chat-input" class="flex-1 rounded border-slate-300" placeholder="例: 初期リリースは管理画面を除外して、予算内に抑えたい" />
+              <button class="px-3 py-2 text-sm rounded bg-brand-600 text-white" onclick="sendChat()">送信</button>
+            </div>
+            <div id="chat-suggestions" class="mt-3 flex flex-wrap gap-2"></div>
+            <div id="chat-reply" class="mt-3 text-sm text-slate-700 prose prose-slate max-w-none"></div>
+          </div>
+          <div class="mt-4">
+            <button class="px-4 py-2 text-sm rounded bg-emerald-600 text-white" onclick="applyAdjustments()">調整案を反映（Excel再出力）</button>
+            <button class="px-4 py-2 text-sm rounded bg-slate-200 text-slate-800" onclick="(function(){ if(!window.initialEstimates){ toast('初期見積が見つかりません','error'); return;} const data={ estimates: JSON.parse(JSON.stringify(window.initialEstimates)) }; updateEstimatesView(data); toast('最初の見積内容に戻しました','success'); })()">最初の見積内容に戻す</button>
+          </div>
+        </div>
+      </div>
+
       <!-- アコーディオン制御ボタン -->
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-base font-semibold text-slate-900">成果物別詳細</h3>
@@ -592,46 +633,6 @@
 
       <!-- モバイル用カード（非表示） -->
       <div id="result-cards" class="hidden"></div>
-    </section>
-
-    <section id="adjust" class="rounded-xl border border-slate-200 bg-white p-5 mt-6 hidden">
-      <h2 class="text-lg font-semibold text-slate-900 mb-3">見積り調整</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="space-y-3">
-          <div class="text-sm font-semibold text-slate-800 mb-1">クイック見積調整（機械的適用）</div>
-          <div class="text-xs text-slate-500 -mt-2 mb-2">現在表示中の見積を前提に、上限予算・単価・リスク・機能除外を連続適用します。</div>
-          <div class="flex items-center gap-2">
-            <input id="qa-cap" type="number" placeholder="上限金額（円）" class="w-40 rounded border-slate-300" />
-            <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('fit_budget',{cap:Number(document.getElementById('qa-cap').value||0)})">上限予算に合わせる</button>
-          </div>
-          <div class="flex items-center gap-2">
-            <input id="qa-unit" type="number" placeholder="単価（円/人日）" class="w-40 rounded border-slate-300" />
-            <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('unit_cost_change',{unit_cost:Number(document.getElementById('qa-unit').value||40000)})">単価を変更</button>
-          </div>
-          <div class="flex items-center gap-2">
-            <input id="qa-risk" type="number" placeholder="リスク%" class="w-32 rounded border-slate-300" />
-            <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('risk_buffer',{percent:Number(document.getElementById('qa-risk').value||10)})">リスクバッファ追加</button>
-          </div>
-          <div class="flex items-center gap-2">
-            <input id="qa-scope" type="text" placeholder="除外キーワード（,区切り）" class="w-80 rounded border-slate-300" />
-            <button class="px-3 py-2 text-sm rounded bg-slate-900 text-white" onclick="quickAction('scope_reduce',{keywords:(document.getElementById('qa-scope').value||'').split(',')})">機能を絞る</button>
-          </div>
-        </div>
-        <div>
-          <div class="text-sm font-semibold text-slate-800 mb-1">AI見積調整（自由入力）</div>
-          <div class="text-xs text-slate-500 -mt-2 mb-2">ご要望を自然文で入力すると、AIが調整案を提示します。</div>
-          <div class="flex gap-2">
-            <input id="chat-input" class="flex-1 rounded border-slate-300" placeholder="例: 初期リリースは管理画面を除外して、予算内に抑えたい" />
-            <button class="px-3 py-2 text-sm rounded bg-brand-600 text-white" onclick="sendChat()">送信</button>
-          </div>
-          <div id="chat-suggestions" class="mt-3 flex flex-wrap gap-2"></div>
-          <div id="chat-reply" class="mt-3 text-sm text-slate-700 prose prose-slate max-w-none"></div>
-        </div>
-        <div class="mt-4">
-          <button class="px-4 py-2 text-sm rounded bg-emerald-600 text-white" onclick="applyAdjustments()">調整案を反映（Excel再出力）</button>
-          <button class="px-4 py-2 text-sm rounded bg-slate-200 text-slate-800" onclick="(function(){ if(!window.initialEstimates){ toast('初期見積が見つかりません','error'); return;} const data={ estimates: JSON.parse(JSON.stringify(window.initialEstimates)) }; updateEstimatesView(data); toast('最初の見積内容に戻しました','success'); })()">最初の見積内容に戻す</button>
-        </div>
-      </div>
     </section>
   </main>
 
