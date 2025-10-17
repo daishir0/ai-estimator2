@@ -269,9 +269,9 @@
       const data = await res.json();
 
       // 合計情報を更新
-      document.getElementById('subtotal').textContent = Math.round(data.subtotal).toLocaleString() + t('ui.unit_yen');
-      document.getElementById('tax').textContent = Math.round(data.tax).toLocaleString() + t('ui.unit_yen');
-      document.getElementById('total').textContent = Math.round(data.total).toLocaleString() + t('ui.unit_yen');
+      document.getElementById('subtotal').textContent = formatCurrency(data.subtotal);
+      document.getElementById('tax').textContent = formatCurrency(data.tax);
+      document.getElementById('total').textContent = formatCurrency(data.total);
 
       // アコーディオン形式で見積り詳細を表示
       const accordion = document.getElementById('result-accordion');
@@ -281,7 +281,7 @@
         const name = item.deliverable_name || item.name || '';
         const desc = item.deliverable_description || item.description || '';
         const pd = Number(item.person_days || 0).toFixed(1);
-        const amt = Math.round(item.amount || 0).toLocaleString();
+        const amt = formatCurrency(item.amount || 0);
         const breakdown = (item.reasoning_breakdown || item.reasoning || "").toString();
         const notes = (item.reasoning_notes || "").toString();
         const htmlBreakdown = DOMPurify.sanitize(marked.parse(breakdown));
@@ -306,7 +306,7 @@
               </div>
               <div class="text-right">
                 <div class="text-slate-500 text-xs">${t('ui.label_amount')}</div>
-                <div class="font-semibold tabular-nums">${amt}${t('ui.unit_yen')}</div>
+                <div class="font-semibold tabular-nums">${amt}</div>
               </div>
               <svg class="w-5 h-5 text-slate-400 transition-transform duration-200 accordion-icon-${index}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -945,7 +945,7 @@
         const pdNum = Number(item.person_days || 0);
         const pd = pdNum.toFixed(1);
         const amtNum = Math.round(item.amount || 0);
-        const amt = amtNum.toLocaleString();
+        const amt = formatCurrency(amtNum);
         const breakdown = (item.reasoning_breakdown || item.reasoning || '').toString();
         const notes = (item.reasoning_notes || '').toString();
         const htmlBreakdown = DOMPurify.sanitize(marked.parse(breakdown));
@@ -981,7 +981,7 @@
               </div>
               <div class="text-right">
                 <div class="text-slate-500 text-xs">${t('ui.label_amount')}</div>
-                <div class="font-semibold tabular-nums">${amt}${t('ui.unit_yen')}${amtBadge}</div>
+                <div class="font-semibold tabular-nums">${amt}${amtBadge}</div>
               </div>
               <svg class="w-5 h-5 text-slate-400 transition-transform duration-200 accordion-icon-${index}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -1007,16 +1007,16 @@
 
       // 合計更新
       if (apiData.totals) {
-        document.getElementById('subtotal').textContent = Math.round(apiData.totals.subtotal).toLocaleString() + t('ui.unit_yen');
-        document.getElementById('tax').textContent = Math.round(apiData.totals.tax).toLocaleString() + t('ui.unit_yen');
-        document.getElementById('total').textContent = Math.round(apiData.totals.total).toLocaleString() + t('ui.unit_yen');
+        document.getElementById('subtotal').textContent = formatCurrency(apiData.totals.subtotal);
+        document.getElementById('tax').textContent = formatCurrency(apiData.totals.tax);
+        document.getElementById('total').textContent = formatCurrency(apiData.totals.total);
       } else {
         const subtotal = (ests||[]).reduce((a,c)=>a+Math.round(c.amount||0),0);
         const tax = Math.round(subtotal*0.1);
         const total = subtotal + tax;
-        document.getElementById('subtotal').textContent = subtotal.toLocaleString() + t('ui.unit_yen');
-        document.getElementById('tax').textContent = tax.toLocaleString() + t('ui.unit_yen');
-        document.getElementById('total').textContent = total.toLocaleString() + t('ui.unit_yen');
+        document.getElementById('subtotal').textContent = formatCurrency(subtotal);
+        document.getElementById('tax').textContent = formatCurrency(tax);
+        document.getElementById('total').textContent = formatCurrency(total);
       }
 
       // 棒グラフを疑似振動で更新（色は固定）

@@ -73,6 +73,7 @@
     "unit_percent": "%",
     "unit_person_days": "人日",
     "chart_amount_label": "金額(円)",
+    "currency_format": "{amount}円",
     "label_proposals": "調整案",
     "label_proposal_title": "タイトル",
     "label_proposal_description": "説明",

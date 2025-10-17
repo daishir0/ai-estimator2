@@ -42,6 +42,12 @@ function t(key, params = {}) {
   return value;
 }
 
+// 通貨フォーマット関数
+function formatCurrency(amount) {
+  const formatted = Math.round(amount).toLocaleString();
+  return t('ui.currency_format', { amount: formatted });
+}
+
 // ページ全体を翻訳
 function translatePage() {
   // data-i18n属性を持つ要素を翻訳

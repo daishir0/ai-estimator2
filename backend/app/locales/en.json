@@ -73,6 +73,7 @@
     "unit_percent": "%",
     "unit_person_days": "person-days",
     "chart_amount_label": "Amount ($)",
+    "currency_format": "${amount}",
     "label_proposals": "Adjustment Proposals",
     "label_proposal_title": "Title",
     "label_proposal_description": "Description",
