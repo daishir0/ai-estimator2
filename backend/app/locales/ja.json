@@ -152,7 +152,20 @@
     "suggestion_message_reduce_all_5": "全体を5%下げてください",
     "summary_subtotal": "小計",
     "summary_tax": "税額",
-    "summary_total": "合計"
+    "summary_total": "合計",
+    "input_empty": "入力が空です。",
+    "input_too_long": "入力が長すぎます（10000文字以下）。",
+    "input_validation_failed": "入力検証に失敗しました",
+    "output_validation_failed_default": "申し訳ございません。応答の生成に問題が発生しました。",
+    "prompt_injection_detected": "不正な入力が検出されました。",
+    "command_injection_detected": "不正なコマンドが検出されました。",
+    "sql_injection_detected": "不正なSQLコマンドが検出されました。",
+    "deliverable_name_too_short": "成果物名が短すぎます（3文字以上必要）。",
+    "deliverable_name_too_long": "成果物名が長すぎます（200文字以下）。",
+    "person_days_too_small": "工数が小さすぎます（0.5人日以上必要）。",
+    "person_days_too_large": "工数が大きすぎます（100人日以下）。",
+    "amount_mismatch": "金額が工数と単価から計算された値と一致しません。",
+    "json_validation_failed": "JSON検証に失敗しました"
   },
   "excel": {
     "sheet_name": "見積り",

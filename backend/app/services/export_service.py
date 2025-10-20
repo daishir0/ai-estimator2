@@ -29,8 +29,11 @@ class ExportService:
         output_path = os.path.join(output_dir, output_filename)
 
         try:
-            # 元のExcelファイルを読み込み
-            df = pd.read_excel(original_excel_path, engine="openpyxl")
+            # 元のファイルを読み込み (Excel/CSV auto-detect)
+            if original_excel_path.endswith('.csv'):
+                df = pd.read_csv(original_excel_path, encoding='utf-8')
+            else:
+                df = pd.read_excel(original_excel_path, engine="openpyxl")
 
             # 見積りデータを追加
             df = self._add_estimate_columns(df, estimates)

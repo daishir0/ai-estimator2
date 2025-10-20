@@ -152,7 +152,20 @@
     "suggestion_message_reduce_all_5": "Please reduce the overall estimate by 5%",
     "summary_subtotal": "Subtotal",
     "summary_tax": "Tax",
-    "summary_total": "Total"
+    "summary_total": "Total",
+    "input_empty": "Input is empty.",
+    "input_too_long": "Input is too long (max 10000 characters).",
+    "input_validation_failed": "Input validation failed",
+    "output_validation_failed_default": "We're sorry. There was a problem generating the response.",
+    "prompt_injection_detected": "Malicious input detected.",
+    "command_injection_detected": "Malicious command detected.",
+    "sql_injection_detected": "Malicious SQL command detected.",
+    "deliverable_name_too_short": "Deliverable name is too short (minimum 3 characters).",
+    "deliverable_name_too_long": "Deliverable name is too long (maximum 200 characters).",
+    "person_days_too_small": "Person-days estimate is too small (minimum 0.5 person-days).",
+    "person_days_too_large": "Person-days estimate is too large (maximum 100 person-days).",
+    "amount_mismatch": "Amount does not match the calculated value from person-days and unit cost.",
+    "json_validation_failed": "JSON validation failed"
   },
   "excel": {
     "sheet_name": "Estimate",

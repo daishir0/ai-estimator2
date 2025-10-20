@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 import os
 import shutil
+import uuid
 
 from app.db.database import get_db
 from app.schemas.task import (
@@ -140,9 +141,12 @@ async def get_questions(task_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="タスクが見つかりません")
 
     try:
-        # Excelから成果物読み込み
+        # ファイルから成果物読み込み (Excel/CSV auto-detect)
         input_service = InputService()
-        deliverables = input_service.load_excel_data(task.excel_file_path)
+        if task.excel_file_path.endswith('.csv'):
+            deliverables = input_service.load_csv_data(task.excel_file_path)
+        else:
+            deliverables = input_service.load_excel_data(task.excel_file_path)
 
         # 質問生成
         question_service = QuestionService()
@@ -388,6 +392,27 @@ async def chat_adjust(task_id: str, req: ChatRequest, db: Session = Depends(get_
         }
         for e in estimates
     ]
+
+    # Save adjusted estimates to database
+    if estimates:
+        from app.models.estimate import Estimate
+        # Delete old estimates
+        db.query(Estimate).filter(Estimate.task_id == task_id).delete()
+        # Save new estimates
+        for e in estimates:
+            estimate = Estimate(
+                id=str(uuid.uuid4()),
+                task_id=task_id,
+                deliverable_name=e["deliverable_name"],
+                deliverable_description=e.get("deliverable_description"),
+                person_days=float(e["person_days"]),
+                amount=float(e["amount"]),
+                reasoning=e.get("reasoning"),
+                reasoning_breakdown=e.get("reasoning_breakdown"),
+                reasoning_notes=e.get("reasoning_notes"),
+            )
+            db.add(estimate)
+        db.commit()
     resp = ChatResponse(
         reply_md=result.get("reply_md", ""),
         suggestions=result.get("suggestions"),
