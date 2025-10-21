@@ -1,16 +1,21 @@
-"""見積り調整チャットサービス
+"""Estimate adjustment chat service
 
-- クイックアクション: ローカルロジックで即時計算
-- AI見積調整: 自由入力（message）の場合はOpenAIで提案を生成（同期）
+- Quick actions: Immediate calculation with local logic
+- AI estimate adjustment: Generate proposals with OpenAI for free input (message) (synchronous)
 """
 from typing import List, Dict, Any, Tuple
 import uuid
+import logging
 from app.models import Estimate, Task, Message
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.i18n import t
+from app.services.retry_service import retry_with_exponential_backoff
+from app.services.circuit_breaker import openai_circuit_breaker
 import json
 import re
+
+logger = logging.getLogger(__name__)
 
 try:
     import openai
@@ -406,23 +411,9 @@ class ChatService:
 
         try:
             print(f"[ChatService] GPT-4呼び出し開始: model={getattr(settings, 'OPENAI_MODEL', 'gpt-4o')}")
-            client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
-            print(f"[ChatService] OpenAIクライアント作成完了")
-            # システムプロンプトに言語指示を追加
-            system_prompt = f"{t('prompts.chat_system')}\n\n{t('prompts.chat_language_instruction')}\n\nあなたは厳密なフォーマットで応答する上級PMです。JSON形式のみで返答してください。"
 
-            resp = client.chat.completions.create(
-                model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o'),
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt},
-                ],
-                max_tokens=2000,
-                temperature=0.7,
-            )
-            print(f"[ChatService] GPT-4レスポンス受信完了")
-
-            content = resp.choices[0].message.content.strip()
+            # Call LLM with retry and circuit breaker
+            content = self._call_proposal_llm_with_retry(prompt)
             print(f"[ChatService] レスポンス内容（最初の200文字）: {content[:200]}")
 
             # JSONを抽出
@@ -471,6 +462,54 @@ class ChatService:
             import traceback
             traceback.print_exc()
             return []
+
+    @retry_with_exponential_backoff()
+    def _call_proposal_llm_with_retry(self, prompt: str) -> str:
+        """Call LLM for proposal generation with retry logic"""
+        client = openai.OpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            timeout=settings.OPENAI_TIMEOUT
+        )
+
+        # System prompt with language instruction
+        system_prompt = f"{t('prompts.chat_system')}\n\n{t('prompts.chat_language_instruction')}\n\nあなたは厳密なフォーマットで応答する上級PMです。JSON形式のみで返答してください。"
+
+        resp = client.chat.completions.create(
+            model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o'),
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=2000,
+            temperature=0.7,
+            timeout=settings.OPENAI_TIMEOUT
+        )
+
+        return resp.choices[0].message.content.strip()
+
+    @retry_with_exponential_backoff()
+    def _call_adjustment_llm_with_retry(self, prompt: dict) -> str:
+        """Call LLM for general adjustment with retry logic"""
+        client = openai.OpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            timeout=settings.OPENAI_TIMEOUT
+        )
+
+        # System prompt with language instruction
+        system_prompt = f"{t('prompts.chat_system')}\n\n{t('prompts.chat_language_instruction')}\n\nあなたは厳密なフォーマットで応答する上級PMです。"
+
+        resp = client.chat.completions.create(
+            model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini'),
+            messages=[
+                {"role": "system", "content": system_prompt},
+                prompt,
+            ],
+            max_tokens=1000,
+            temperature=0.2,
+            timeout=settings.OPENAI_TIMEOUT
+        )
+
+        return resp.choices[0].message.content.strip()
 
     # --- 変更を見積に適用 ---
     def _apply_changes_to_estimates(
@@ -661,7 +700,6 @@ class ChatService:
             note = rule_note
             if _OPENAI_AVAILABLE and getattr(settings, 'OPENAI_API_KEY', None):
                 try:
-                    client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
                     # 言語指示を取得
                     language_instruction = t('prompts.chat_language_instruction')
                     # daily unit cost は設定値を伝え、金額整合を要求
@@ -678,19 +716,9 @@ class ChatService:
                             "現在の見積(JSON):\n" + json.dumps(updated, ensure_ascii=False)
                         ),
                     }
-                    # システムプロンプトに言語指示を追加
-                    system_prompt = f"{t('prompts.chat_system')}\n\n{language_instruction}\n\nあなたは厳密なフォーマットで応答する上級PMです。"
 
-                    resp = client.chat.completions.create(
-                        model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini'),
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            prompt,
-                        ],
-                        max_tokens=1000,
-                        temperature=0.2,
-                    )
-                    content = resp.choices[0].message.content.strip()
+                    # Call LLM with retry
+                    content = self._call_adjustment_llm_with_retry(prompt)
                     m = re.search(r"\{.*\}\s*$", content, re.DOTALL)
                     if m:
                         data = json.loads(m.group(0))

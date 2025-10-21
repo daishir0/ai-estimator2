@@ -113,9 +113,8 @@ def mock_openai(monkeypatch, mock_openai_response):
         def __init__(self, response_data):
             self.response_data = response_data
 
-        def create(self, **kwargs):
+        def create(self, model=None, messages=None, temperature=None, max_tokens=None, timeout=None, **kwargs):
             # Return appropriate response based on prompt content
-            messages = kwargs.get("messages", [])
             last_message = messages[-1]["content"] if messages else ""
 
             if "質問" in last_message or "question" in last_message.lower():
@@ -132,16 +131,17 @@ def mock_openai(monkeypatch, mock_openai_response):
             self.completions = MockCompletions(response_data)
 
     class MockOpenAI:
-        def __init__(self, api_key=None):
+        def __init__(self, api_key=None, timeout=None, **kwargs):
             self.chat = MockChat(mock_openai_response)
+            self.timeout = timeout
 
     # Mock openai.OpenAI
     import sys
     if 'openai' not in sys.modules:
         sys.modules['openai'] = MagicMock()
 
-    def mock_openai_constructor(api_key=None):
-        return MockOpenAI(api_key)
+    def mock_openai_constructor(api_key=None, timeout=None, **kwargs):
+        return MockOpenAI(api_key=api_key, timeout=timeout, **kwargs)
 
     monkeypatch.setattr("openai.OpenAI", mock_openai_constructor)
 

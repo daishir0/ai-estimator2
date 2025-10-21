@@ -8,6 +8,7 @@ import os
 from app.core.config import settings
 from app.api.v1 import tasks
 from app.db.database import init_db
+from app.middleware.resource_limiter import ResourceLimiterMiddleware, FileSizeLimiterMiddleware
 
 app = FastAPI(
     title="AI見積りシステム API",
@@ -28,6 +29,20 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Resource limiter middleware - limit concurrent requests to resource-intensive endpoints
+app.add_middleware(
+    ResourceLimiterMiddleware,
+    max_concurrent=getattr(settings, 'MAX_CONCURRENT_ESTIMATES', 5),
+    timeout=30.0,
+    limited_paths=[f"{settings.API_V1_STR}/tasks"]  # Limit task-related endpoints
+)
+
+# File size limiter middleware - reject oversized file uploads
+app.add_middleware(
+    FileSizeLimiterMiddleware,
+    max_file_size=10 * 1024 * 1024  # 10 MB limit
 )
 
 

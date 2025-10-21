@@ -23,6 +23,20 @@ class Settings(BaseSettings):
     # Language Setting
     LANGUAGE: str = "ja"  # Default: Japanese (ja or en)
 
+    # Resilience Settings
+    OPENAI_TIMEOUT: int = 30  # OpenAI API timeout in seconds
+    OPENAI_MAX_RETRIES: int = 3  # Maximum retry attempts
+    OPENAI_RETRY_INITIAL_DELAY: float = 1.0  # Initial retry delay in seconds
+    OPENAI_RETRY_BACKOFF_FACTOR: float = 2.0  # Exponential backoff factor
+
+    # Circuit Breaker Settings
+    CIRCUIT_BREAKER_FAILURE_THRESHOLD: int = 5  # Number of failures before opening circuit
+    CIRCUIT_BREAKER_TIMEOUT: int = 60  # Timeout in seconds before attempting half-open
+
+    # Resource Limit Settings
+    MAX_CONCURRENT_ESTIMATES: int = 5  # Maximum number of concurrent estimate operations
+    MAX_ITERATIONS: int = 10  # Maximum iterations for loop detection
+
     def get_daily_unit_cost(self) -> int:
         """言語設定に応じた単価を取得"""
         if self.LANGUAGE == "en":

@@ -42,7 +42,7 @@ class TestEstimatorService:
         assert result[0]["name"] == "Requirements"
 
     def test_generate_estimates_api_error_fallback(self, monkeypatch, sample_deliverables, sample_qa_pairs):
-        """Test fallback to default estimate when API fails"""
+        """Test fallback to keyword-based estimate when API fails"""
         def mock_create_error(**kwargs):
             raise Exception("API Error")
 
@@ -55,11 +55,25 @@ class TestEstimatorService:
             sample_qa_pairs
         )
 
-        # Should return fallback estimates (default: 5.0 person-days)
+        # Should return fallback estimates (keyword-based: 5.0-30.0 person-days)
         assert isinstance(result, list)
         assert len(result) == len(sample_deliverables)
+
+        # Verify keyword-based fallback works correctly
+        # sample_deliverables contains: 要件定義書, 基本設計書, 詳細設計書
         for estimate in result:
-            assert estimate["person_days"] == 5.0
+            # All fallback estimates should be reasonable (between 5.0 and 30.0)
+            assert 5.0 <= estimate["person_days"] <= 30.0
+            # Verify amount is calculated correctly
+            assert estimate["amount"] == estimate["person_days"] * service.daily_unit_cost
+
+        # Check specific keyword-based estimates
+        requirements_estimate = next(e for e in result if "要件" in e["name"])
+        assert requirements_estimate["person_days"] == 10.0  # Requirements keyword
+
+        design_estimates = [e for e in result if "設計" in e["name"]]
+        for design_est in design_estimates:
+            assert design_est["person_days"] == 15.0  # Design keyword
 
     def test_amount_calculation(self, mock_openai, sample_qa_pairs):
         """Test that amount is calculated correctly from person_days"""

@@ -170,7 +170,12 @@
     "safety_toxic_content": "Inappropriate content detected. Please use appropriate language.",
     "safety_pii_detected": "Personal information detected. Please remove personal information.",
     "safety_length_exceeded": "Input is too long. Please limit to 10,000 characters.",
-    "safety_general_rejection": "Input does not meet safety standards. Please review your input."
+    "safety_general_rejection": "Input does not meet safety standards. Please review your input.",
+    "circuit_breaker_open": "Service temporarily unavailable. Please retry after a moment.",
+    "fallback_estimation_note": "Using simplified calculation due to AI estimation unavailability.",
+    "fallback_estimation_reason": "Used keyword-based simplified estimation due to temporary OpenAI API inaccessibility.",
+    "max_iterations_exceeded": "Maximum iteration count exceeded",
+    "file_too_large": "File size is too large"
   },
   "excel": {
     "sheet_name": "Estimate",

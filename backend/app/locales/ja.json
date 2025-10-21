@@ -170,7 +170,12 @@
     "safety_toxic_content": "不適切な内容が検出されました。適切な表現に修正してください。",
     "safety_pii_detected": "個人情報が含まれています。個人情報を削除してください。",
     "safety_length_exceeded": "入力が長すぎます。10,000文字以内にしてください。",
-    "safety_general_rejection": "入力が安全基準を満たしていません。内容を見直してください。"
+    "safety_general_rejection": "入力が安全基準を満たしていません。内容を見直してください。",
+    "circuit_breaker_open": "一時的にサービスが利用できません。しばらく待ってから再試行してください。",
+    "fallback_estimation_note": "AI見積りが利用できないため、簡易計算を使用しています。",
+    "fallback_estimation_reason": "OpenAI APIに一時的にアクセスできないため、キーワードベースの簡易見積りを使用しました。",
+    "max_iterations_exceeded": "最大イテレーション数を超過しました",
+    "file_too_large": "ファイルサイズが大きすぎます"
   },
   "excel": {
     "sheet_name": "見積り",
