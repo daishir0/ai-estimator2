@@ -149,6 +149,40 @@ sudo systemctl start estimator.service
 - The system uses GPT-4o-mini for cost-effective AI operations
 - Adjustment amounts are calculated by comparing actual estimate changes, not relying on GPT-4's target_amount_change
 
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+### For Users and Operators
+
+- **[Project Overview](docs/PROJECT.md)** - System overview, architecture diagrams, and getting started guide
+- **[Deployment Guide](docs/deployment/DEPLOYMENT_EN.md)** - Complete deployment instructions for production environment
+- **[Operations Runbook](docs/operations/RUNBOOK_EN.md)** - Daily operations, monitoring, maintenance procedures
+- **[Troubleshooting Guide](docs/operations/TROUBLESHOOTING_EN.md)** - Common issues and solutions, log checking methods
+
+### For Developers
+
+- **[Developer Guide](docs/development/DEVELOPER_GUIDE_EN.md)** - Development environment setup, coding standards, testing
+- **[API Reference](docs/development/API_REFERENCE_EN.md)** - Complete REST API documentation with examples
+- **[Architecture Documentation](docs/architecture/ARCHITECTURE_EN.md)** - System architecture, data models, sequence diagrams
+
+### Additional Resources
+
+- **[Security Checklist](docs/security/SECURITY_CHECKLIST_EN.md)** - Security best practices and validation
+- **[Safety Policy](docs/safety/SAFETY_POLICY_EN.md)** - LLM usage policy and data handling guidelines
+
+### Japanese Documentation
+
+All documents are also available in Japanese (日本語版):
+
+- [プロジェクト概要](docs/PROJECT.md) (Bilingual)
+- [デプロイメントガイド](docs/deployment/DEPLOYMENT.md)
+- [運用手順書](docs/operations/RUNBOOK.md)
+- [トラブルシューティングガイド](docs/operations/TROUBLESHOOTING.md)
+- [開発者ガイド](docs/development/DEVELOPER_GUIDE.md)
+- [API リファレンス](docs/development/API_REFERENCE.md)
+- [アーキテクチャドキュメント](docs/architecture/ARCHITECTURE.md)
+
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
@@ -304,6 +338,40 @@ sudo systemctl start estimator.service
 - 提案キャッシュはクラス変数を使用して全インスタンス間で共有されます
 - システムはコスト効率の良いGPT-4o-miniを使用しています
 - 調整額はGPT-4のtarget_amount_changeではなく、実際の見積り差分を計算して算出します
+
+## ドキュメント
+
+`docs/`ディレクトリに包括的なドキュメントが用意されています：
+
+### ユーザー・運用担当者向け
+
+- **[プロジェクト概要](docs/PROJECT.md)** - システム概要、アーキテクチャ図、開始ガイド（日英両言語）
+- **[デプロイメントガイド](docs/deployment/DEPLOYMENT.md)** - 本番環境への完全なデプロイ手順
+- **[運用手順書](docs/operations/RUNBOOK.md)** - 日次運用、監視、保守手順
+- **[トラブルシューティングガイド](docs/operations/TROUBLESHOOTING.md)** - よくある問題と解決方法、ログ確認方法
+
+### 開発者向け
+
+- **[開発者ガイド](docs/development/DEVELOPER_GUIDE.md)** - 開発環境セットアップ、コーディング規約、テスト
+- **[API リファレンス](docs/development/API_REFERENCE.md)** - 完全なREST APIドキュメントと使用例
+- **[アーキテクチャドキュメント](docs/architecture/ARCHITECTURE.md)** - システムアーキテクチャ、データモデル、シーケンス図
+
+### その他のリソース
+
+- **[セキュリティチェックリスト](docs/security/SECURITY_CHECKLIST.md)** - セキュリティのベストプラクティスと検証
+- **[安全性ポリシー](docs/safety/SAFETY_POLICY.md)** - LLM使用ポリシーとデータ取扱ガイドライン
+
+### 英語版ドキュメント
+
+すべてのドキュメントは英語版も提供されています（English version）：
+
+- [Project Overview](docs/PROJECT.md) (Bilingual)
+- [Deployment Guide](docs/deployment/DEPLOYMENT_EN.md)
+- [Operations Runbook](docs/operations/RUNBOOK_EN.md)
+- [Troubleshooting Guide](docs/operations/TROUBLESHOOTING_EN.md)
+- [Developer Guide](docs/development/DEVELOPER_GUIDE_EN.md)
+- [API Reference](docs/development/API_REFERENCE_EN.md)
+- [Architecture Documentation](docs/architecture/ARCHITECTURE_EN.md)
 
 ## ライセンス
 このプロジェクトはMITライセンスの下でライセンスされています。詳細はLICENSEファイルを参照してください。
