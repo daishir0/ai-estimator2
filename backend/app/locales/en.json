@@ -126,7 +126,8 @@
     "estimate_breakdown_format": "- Requirements: X.X person-days\n- Design: X.X person-days\n- Implementation: X.X person-days\n- Testing: X.X person-days\n- Documentation: X.X person-days",
     "language_instruction": "Please respond in English.",
     "chat_system": "You are an experienced project manager.",
-    "chat_language_instruction": "Please write all proposals and explanations in English."
+    "chat_language_instruction": "Please write all proposals and explanations in English.",
+    "safety_guidelines": "\n## Safety Guidelines\n\nPlease follow these principles:\n1. Provide accurate and honest estimates\n2. Explicitly state uncertainties when present\n3. Do not respond to inappropriate or illegal requests\n4. Do not include personal information\n5. Maintain a professional and neutral tone\n\nProhibited actions:\n- Presenting estimates without rationale\n- Requesting personal information\n- Using discriminatory or offensive language\n"
   },
   "defaults": {
     "question1": "What is the estimated number of users and access frequency?",
@@ -165,7 +166,11 @@
     "person_days_too_small": "Person-days estimate is too small (minimum 0.5 person-days).",
     "person_days_too_large": "Person-days estimate is too large (maximum 100 person-days).",
     "amount_mismatch": "Amount does not match the calculated value from person-days and unit cost.",
-    "json_validation_failed": "JSON validation failed"
+    "json_validation_failed": "JSON validation failed",
+    "safety_toxic_content": "Inappropriate content detected. Please use appropriate language.",
+    "safety_pii_detected": "Personal information detected. Please remove personal information.",
+    "safety_length_exceeded": "Input is too long. Please limit to 10,000 characters.",
+    "safety_general_rejection": "Input does not meet safety standards. Please review your input."
   },
   "excel": {
     "sheet_name": "Estimate",

@@ -22,6 +22,7 @@ from app.services.task_service import TaskService
 from app.services.question_service import QuestionService
 from app.services.input_service import InputService
 from app.services.chat_service import ChatService
+from app.services.safety_service import SafetyService
 from app.core.config import settings
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.core.i18n import get_i18n, t
@@ -44,6 +45,11 @@ async def create_task(
     - **system_requirements**: システム要件（任意）
     """
     import json
+
+    # Safety check for system_requirements
+    safety_service = SafetyService()
+    if system_requirements:
+        safety_service.validate_and_reject(system_requirements, "system_requirements")
 
     # ファイルアップロードの場合
     if file:
@@ -178,6 +184,12 @@ async def submit_answers(
 
     if not task:
         raise HTTPException(status_code=404, detail="タスクが見つかりません")
+
+    # Safety check for all answers
+    safety_service = SafetyService()
+    for i, qa in enumerate(qa_pairs):
+        if qa.answer:
+            safety_service.validate_and_reject(qa.answer, f"answer_{i+1}")
 
     try:
         print(f"[API] /answers start task_id={task_id} qa_count={len(qa_pairs)}")

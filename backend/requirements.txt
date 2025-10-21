@@ -1,12 +1,12 @@
 # FastAPI and Web Server
-fastapi==0.104.1
+fastapi==0.109.1
 uvicorn[standard]==0.24.0
 
 # Database
 sqlalchemy==2.0.23
 
 # File Upload
-python-multipart==0.0.6
+python-multipart==0.0.18
 
 # AI and OpenAI Integration
 openai==2.3.0

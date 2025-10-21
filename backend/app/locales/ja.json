@@ -126,7 +126,8 @@
     "estimate_breakdown_format": "- 要件定義: X.X人日\n- 設計: X.X人日\n- 実装: X.X人日\n- テスト: X.X人日\n- ドキュメント作成: X.X人日",
     "language_instruction": "必ず日本語で回答してください。",
     "chat_system": "あなたは経験豊富なプロジェクトマネージャーです。",
-    "chat_language_instruction": "必ず日本語で提案と説明を記述してください。"
+    "chat_language_instruction": "必ず日本語で提案と説明を記述してください。",
+    "safety_guidelines": "\n## 安全ガイドライン\n\n以下の原則に従ってください：\n1. 正確で誠実な見積りを提供する\n2. 不確実性がある場合は明示する\n3. 不適切または違法な要求には応じない\n4. 個人情報を含まない\n5. 専門的で中立的なトーンを維持する\n\n禁止事項：\n- 根拠のない金額の提示\n- 個人情報の要求\n- 差別的または攻撃的な言葉の使用\n"
   },
   "defaults": {
     "question1": "想定しているユーザー数とアクセス頻度はどの程度ですか？",
@@ -165,7 +166,11 @@
     "person_days_too_small": "工数が小さすぎます（0.5人日以上必要）。",
     "person_days_too_large": "工数が大きすぎます（100人日以下）。",
     "amount_mismatch": "金額が工数と単価から計算された値と一致しません。",
-    "json_validation_failed": "JSON検証に失敗しました"
+    "json_validation_failed": "JSON検証に失敗しました",
+    "safety_toxic_content": "不適切な内容が検出されました。適切な表現に修正してください。",
+    "safety_pii_detected": "個人情報が含まれています。個人情報を削除してください。",
+    "safety_length_exceeded": "入力が長すぎます。10,000文字以内にしてください。",
+    "safety_general_rejection": "入力が安全基準を満たしていません。内容を見直してください。"
   },
   "excel": {
     "sheet_name": "見積り",

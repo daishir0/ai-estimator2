@@ -1,18 +1,21 @@
 """チャット調整プロンプト"""
 from app.core.i18n import t
+from app.prompts.safety_guidelines import get_safety_guidelines
 
 
 def get_chat_system_prompt() -> str:
-    """チャットシステムプロンプトを取得（言語指示付き）"""
+    """チャットシステムプロンプトを取得（安全ガイドライン・言語指示付き）"""
     base_prompt = t('prompts.chat_system')
+    safety_guidelines = get_safety_guidelines()
     language_instruction = t('prompts.chat_language_instruction')
-    return f"{base_prompt}\n\n{language_instruction}"
+    return f"{base_prompt}\n\n{safety_guidelines}\n\n{language_instruction}"
 
 
 def get_proposal_generation_prompt(user_message: str, estimates: list, totals: dict) -> str:
-    """提案生成プロンプトを生成（言語指示付き）"""
+    """提案生成プロンプトを生成（安全ガイドライン・言語指示付き）"""
     unit = t('prompts.estimate_unit')
     base_prompt = t('prompts.chat_system')
+    safety_guidelines = get_safety_guidelines()
     language_instruction = t('prompts.chat_language_instruction')
 
     estimates_text = "\n".join([
@@ -22,6 +25,7 @@ def get_proposal_generation_prompt(user_message: str, estimates: list, totals: d
 
     return f"""
 {base_prompt}
+{safety_guidelines}
 {language_instruction}
 
 ユーザーの要望に基づいて、見積りの調整案を3つ提案してください。

@@ -1,5 +1,6 @@
 """質問生成プロンプト"""
 from app.core.i18n import t
+from app.prompts.safety_guidelines import get_safety_guidelines
 
 
 def get_question_generation_prompt(deliverables_text: str, system_requirements: str) -> str:
@@ -27,7 +28,8 @@ def get_question_generation_prompt(deliverables_text: str, system_requirements: 
 
 
 def get_system_prompt() -> str:
-    """システムプロンプトを取得（言語指示付き）"""
+    """システムプロンプトを取得（安全ガイドライン・言語指示付き）"""
     base_prompt = t('prompts.question_system')
+    safety_guidelines = get_safety_guidelines()
     language_instruction = t('prompts.language_instruction')
-    return f"{base_prompt}\n\n{language_instruction}"
+    return f"{base_prompt}\n\n{safety_guidelines}\n\n{language_instruction}"
