@@ -1,0 +1,12 @@
+[Unit]
+Description=AI Estimator System - Auto Cleanup Timer (Daily at 2:00 AM)
+Requires=estimator-cleanup.service
+
+[Timer]
+# Run daily at 2:00 AM
+OnCalendar=*-*-* 02:00:00
+# Run 5 minutes after boot if missed
+Persistent=true
+
+[Install]
+WantedBy=timers.target

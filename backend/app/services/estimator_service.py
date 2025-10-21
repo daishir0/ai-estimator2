@@ -1,8 +1,7 @@
 import openai
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import json
 import re
-import logging
 from app.core.config import settings
 from app.core.i18n import t
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -12,8 +11,10 @@ import time
 from app.prompts.estimate_prompts import get_estimate_prompt, get_system_prompt
 from app.services.retry_service import retry_with_exponential_backoff
 from app.services.circuit_breaker import openai_circuit_breaker
+from app.core.logging_config import get_logger
+from app.core.metrics import metrics_collector
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class EstimatorService:
@@ -25,15 +26,23 @@ class EstimatorService:
         self.model = settings.OPENAI_MODEL
         self.daily_unit_cost = settings.get_daily_unit_cost()
         
-    def generate_estimates(self, deliverables: List[Dict[str, str]], 
+    def generate_estimates(self, deliverables: List[Dict[str, str]],
                           system_requirements: str,
-                          qa_pairs: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+                          qa_pairs: List[Dict[str, str]],
+                          request_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """成果物ごとの見積りを生成する（並列実行で高速化）"""
         max_workers =  int(getattr(settings, 'MAX_PARALLEL_ESTIMATES', 5)) if hasattr(settings, 'MAX_PARALLEL_ESTIMATES') else 5
         results: List[Tuple[int, Dict[str, Any]]] = []
 
         total_start = time.perf_counter()
-        print(f"[EST] batch start: n={len(deliverables)} max_workers={max_workers} model={self.model} unit_cost={self.daily_unit_cost}")
+        logger.info(
+            "Starting batch estimation",
+            request_id=request_id,
+            deliverable_count=len(deliverables),
+            max_workers=max_workers,
+            model=self.model,
+            daily_unit_cost=self.daily_unit_cost
+        )
 
         def worker(idx: int, d: Dict[str, str]) -> Tuple[int, Dict[str, Any]]:
             name = d.get('name')
@@ -41,17 +50,44 @@ class EstimatorService:
             start = time.perf_counter()
 
             try:
-                print(f"[EST] start deliverable[{idx}] tid={tid}: {name}")
-                est = self._estimate_single_deliverable(d, system_requirements, qa_pairs)
+                logger.debug(
+                    f"Starting deliverable estimation",
+                    request_id=request_id,
+                    deliverable_index=idx,
+                    deliverable_name=name,
+                    thread_id=tid
+                )
+                est = self._estimate_single_deliverable(d, system_requirements, qa_pairs, request_id)
                 dur = time.perf_counter() - start
-                print(f"[EST] done  deliverable[{idx}] tid={tid}: {name} in {dur:.2f}s -> {est.get('person_days')}人日 {int(est.get('amount',0))}円")
+                logger.info(
+                    f"Completed deliverable estimation",
+                    request_id=request_id,
+                    deliverable_index=idx,
+                    deliverable_name=name,
+                    person_days=est.get('person_days'),
+                    amount=int(est.get('amount', 0)),
+                    duration=round(dur, 2),
+                    thread_id=tid
+                )
                 return (idx, est)
             except Exception as e:
                 dur = time.perf_counter() - start
-                print(f"[EST] error deliverable[{idx}] tid={tid}: {name} after {dur:.2f}s: {e}")
-                traceback.print_exc()
+                logger.error(
+                    f"Deliverable estimation failed",
+                    request_id=request_id,
+                    deliverable_index=idx,
+                    deliverable_name=name,
+                    error=str(e),
+                    duration=round(dur, 2),
+                    thread_id=tid
+                )
                 # Use fallback estimation
-                print(f"[EST] fallback deliverable[{idx}] tid={tid}: {name} use fallback estimation")
+                logger.warning(
+                    f"Using fallback estimation",
+                    request_id=request_id,
+                    deliverable_index=idx,
+                    deliverable_name=name
+                )
                 est = self._fallback_estimation(d, e)
                 return (idx, est)
 
@@ -63,12 +99,18 @@ class EstimatorService:
         # 元の順序に並べ替え
         results.sort(key=lambda x: x[0])
         total_dur = time.perf_counter() - total_start
-        print(f"[EST] batch complete in {total_dur:.2f}s")
+        logger.info(
+            "Batch estimation completed",
+            request_id=request_id,
+            total_deliverables=len(deliverables),
+            total_duration=round(total_dur, 2)
+        )
         return [e for _, e in results]
     
     def _estimate_single_deliverable(self, deliverable: Dict[str, str],
                                    system_requirements: str,
-                                   qa_pairs: List[Dict[str, str]]) -> Dict[str, Any]:
+                                   qa_pairs: List[Dict[str, str]],
+                                   request_id: Optional[str] = None) -> Dict[str, Any]:
         """Generate estimate for single deliverable with circuit breaker protection"""
         try:
             # Call through circuit breaker
@@ -76,17 +118,23 @@ class EstimatorService:
                 self._call_llm_with_retry,
                 deliverable,
                 system_requirements,
-                qa_pairs
+                qa_pairs,
+                request_id
             )
         except Exception as e:
-            logger.error(f"Estimation failed for {deliverable.get('name')}: {e}")
+            logger.error(
+                f"Estimation failed for {deliverable.get('name')}: {e}",
+                request_id=request_id,
+                deliverable_name=deliverable.get('name')
+            )
             # Use fallback estimation
             return self._fallback_estimation(deliverable, e)
 
     @retry_with_exponential_backoff()
     def _call_llm_with_retry(self, deliverable: Dict[str, str],
                             system_requirements: str,
-                            qa_pairs: List[Dict[str, str]]) -> Dict[str, Any]:
+                            qa_pairs: List[Dict[str, str]],
+                            request_id: Optional[str] = None) -> Dict[str, Any]:
         """Call LLM with retry logic (exponential backoff)"""
         # Format Q&A pairs
         qa_text = "\n".join([
@@ -96,18 +144,66 @@ class EstimatorService:
 
         prompt = get_estimate_prompt(deliverable, system_requirements, qa_text)
 
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": get_system_prompt()},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=800,
-            temperature=0.3,
-            timeout=settings.OPENAI_TIMEOUT
-        )
+        # Measure OpenAI API call duration
+        start_time = time.perf_counter()
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": get_system_prompt()},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=800,
+                temperature=0.3,
+                timeout=settings.OPENAI_TIMEOUT
+            )
+            duration = time.perf_counter() - start_time
 
-        return self._parse_llm_response(response, deliverable)
+            # Record successful OpenAI API call metrics (TODO-9: added input/output tokens for cost tracking)
+            metrics_collector.record_openai_call(
+                model=self.model,
+                tokens=response.usage.total_tokens,
+                duration=duration,
+                success=True,
+                request_id=request_id or "unknown",
+                operation="estimate",
+                input_tokens=response.usage.prompt_tokens,
+                output_tokens=response.usage.completion_tokens
+            )
+
+            logger.debug(
+                "OpenAI API call successful",
+                request_id=request_id,
+                model=self.model,
+                tokens=response.usage.total_tokens,
+                duration=round(duration, 3)
+            )
+
+            return self._parse_llm_response(response, deliverable)
+
+        except Exception as e:
+            duration = time.perf_counter() - start_time
+
+            # Record failed OpenAI API call metrics (TODO-9: added input/output tokens for cost tracking)
+            metrics_collector.record_openai_call(
+                model=self.model,
+                tokens=0,
+                duration=duration,
+                success=False,
+                request_id=request_id or "unknown",
+                operation="estimate",
+                input_tokens=0,
+                output_tokens=0
+            )
+
+            logger.error(
+                "OpenAI API call failed",
+                request_id=request_id,
+                model=self.model,
+                error=str(e),
+                duration=round(duration, 3)
+            )
+            raise
 
     def _parse_llm_response(self, response, deliverable: Dict[str, str]) -> Dict[str, Any]:
         """Parse LLM response and extract estimate data"""

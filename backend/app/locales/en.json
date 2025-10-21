@@ -142,6 +142,8 @@
     "fit_budget_adjusted": "Total {current} → {new} (adjusted to cap {cap} with factor {ratio})",
     "unit_cost_changed": "Changed unit cost to {cost} per person-day.",
     "risk_buffer_added": "Added {percent}% risk buffer.",
+    "rate_limit_exceeded": "Rate limit exceeded. Please try again later.",
+    "cost_limit_exceeded": "Monthly cost limit exceeded. Please contact system administrator.",
     "ai_request_received": "Request received. Applying the following adjustments.",
     "suggestion_reduce_20": "Reduce {name} by 20%",
     "suggestion_exclude": "Exclude {name}",
@@ -175,7 +177,21 @@
     "fallback_estimation_note": "Using simplified calculation due to AI estimation unavailability.",
     "fallback_estimation_reason": "Used keyword-based simplified estimation due to temporary OpenAI API inaccessibility.",
     "max_iterations_exceeded": "Maximum iteration count exceeded",
-    "file_too_large": "File size is too large"
+    "file_too_large": "File size is too large",
+    "pii_detected": "Personally Identifiable Information detected",
+    "task_not_found": "Task not found.",
+    "task_deleted_successfully": "Task deleted successfully.",
+    "privacy_info_retrieved": "Privacy information retrieved.",
+    "data_retention_notice": "Data will be automatically deleted after {days} days.",
+    "deletion_confirmation": "Are you sure you want to delete? This action cannot be undone.",
+    "pii_warning": "May contain personally identifiable information."
+  },
+  "privacy": {
+    "data_retention_days": "30 days",
+    "auto_deletion_enabled": "Enabled",
+    "auto_deletion_disabled": "Disabled",
+    "privacy_policy_version": "Version {version}",
+    "contact_info": "Contact: @realdaishiro (X)"
   },
   "excel": {
     "sheet_name": "Estimate",

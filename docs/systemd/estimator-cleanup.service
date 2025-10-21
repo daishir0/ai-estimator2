@@ -1,0 +1,16 @@
+[Unit]
+Description=AI Estimator System - Auto Cleanup Batch (GDPR Compliance)
+After=network.target
+
+[Service]
+Type=oneshot
+User=ec2-user
+WorkingDirectory=/home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend
+Environment="PATH=/home/ec2-user/anaconda3/envs/311/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/ec2-user/anaconda3/envs/311/bin/python -m app.tasks.cleanup
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=estimator-cleanup
+
+[Install]
+WantedBy=multi-user.target

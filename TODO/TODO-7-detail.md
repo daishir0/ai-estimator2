@@ -7,14 +7,14 @@
 - **依存関係**: なし
 
 ## 🎯 達成基準
-- [ ] 構造化ログ実装完了（JSON形式）
-- [ ] リクエストIDトレース実装完了
-- [ ] メトリクス収集実装完了
-- [ ] メトリクスエンドポイント実装完了
-- [ ] 監視計画文書作成完了（ja/en）
-- [ ] ログレベル設定実装完了
-- [ ] PII情報のマスキング実装完了
-- [ ] テスト実装完了
+- [x] 構造化ログ実装完了（JSON形式）
+- [x] リクエストIDトレース実装完了
+- [x] メトリクス収集実装完了
+- [x] メトリクスエンドポイント実装完了
+- [x] 監視計画文書作成完了（ja/en）
+- [x] ログレベル設定実装完了
+- [x] PII情報のマスキング実装完了
+- [x] テスト実装完了
 
 ---
 
@@ -456,43 +456,248 @@ class PIIMasker:
 
 ## 🔧 実施内容（実績）
 
-### Day 15-17: [日付]
+### Day 15: 2025-10-22 - 構造化ログ・メトリクス基盤実装
+
 #### 実施作業
-- [ ] 作業内容（実装時に記録）
+- [x] **構造化ログシステム実装**
+  - StructuredLoggerクラス実装（JSON形式ログ）
+  - JSONFormatterクラス実装（カスタムフィールド対応）
+  - PIIMaskerクラス実装（個人情報マスキング）
+  - get_logger()ファクトリー関数実装
+
+- [x] **リクエストIDトレース実装**
+  - RequestIDMiddlewareクラス実装
+  - UUID生成、リクエストステート管理
+  - X-Request-IDヘッダー追加
+
+- [x] **メトリクス収集システム実装**
+  - MetricsCollectorクラス実装（シングルトンパターン）
+  - APICallMetric, OpenAICallMetric, ErrorMetric データクラス
+  - スレッドセーフ実装（threading.Lock）
+  - P95パーセンタイル計算
+
+- [x] **メトリクスAPI実装**
+  - GET /api/v1/metrics - メトリクスサマリー
+  - GET /api/v1/health - 詳細ヘルスチェック
+  - GET /api/v1/metrics/errors - エラー一覧
+  - POST /api/v1/metrics/reset - メトリクスリセット
+
+- [x] **設定追加**
+  - .envにLOG_LEVEL, LOG_FILE, MASK_PII追加
+  - config.pyに設定読み込み追加
 
 #### 変更ファイル
-- ファイル一覧（実装時に記録）
+**新規作成**
+- `backend/app/core/logging_config.py` - 構造化ログシステム
+- `backend/app/middleware/request_id.py` - リクエストIDミドルウェア
+- `backend/app/core/metrics.py` - メトリクス収集システム
+- `backend/app/api/v1/metrics.py` - メトリクスAPI
+
+**変更**
+- `backend/app/core/config.py` - ログ設定追加
+- `backend/app/main.py` - RequestIDMiddleware登録、metrics router追加
 
 #### 確認・テスト
-- [ ] テスト結果（実装時に記録）
+- [x] サービス再起動成功（sudo systemctl restart estimator）
+- [x] /health エンドポイント動作確認
+- [x] /api/v1/metrics エンドポイント動作確認
+- [x] X-Request-IDヘッダー確認
+- [x] デグレなし確認
 
 #### 課題・気づき
-- 課題・気づき（実装時に記録）
+- PIIMaskerの正規表現パターンは基本的なものに留まる（必要に応じて拡張）
+- メトリクスのメモリ蓄積に注意（定期的にreset()が必要）
+- ログファイルローテーション設定は本番環境で別途必要
+
+---
+
+### Day 16: 2025-10-22 - サービス層統合
+
+#### 実施作業
+- [x] **EstimatorService統合**
+  - print()をlogger.info/error/warningに置き換え
+  - OpenAI APIメトリクス記録追加
+  - request_id伝播実装
+
+- [x] **QuestionService統合**
+  - ログ追加
+  - OpenAI APIメトリクス記録追加
+  - request_id伝播実装
+
+- [x] **ChatService統合**
+  - OpenAI APIメトリクス記録追加（proposal + adjustment）
+  - _call_proposal_llm_with_retry, _call_adjustment_llm_with_retry両方に対応
+  - request_id伝播実装
+
+- [x] **TaskService統合**
+  - print()をlogger.infoに置き換え
+  - request_id伝播実装
+
+- [x] **API層統合**
+  - tasks.pyにrequest.state.request_id取得処理追加
+  - 全サービス呼び出しにrequest_id伝播
+
+#### 変更ファイル
+- `backend/app/services/estimator_service.py` - ログ・メトリクス追加
+- `backend/app/services/question_service.py` - ログ・メトリクス追加
+- `backend/app/services/chat_service.py` - メトリクス追加
+- `backend/app/services/task_service.py` - ログ追加
+- `backend/app/api/v1/tasks.py` - request_id伝播
+
+#### 確認・テスト
+- [x] サービス再起動成功
+- [x] タスク作成フロー動作確認
+- [x] メトリクス収集確認
+- [x] 既存機能デグレなし確認
+
+#### 課題・気づき
+- request_idをOptional[str] = Noneにして後方互換性を保った
+- 既存のprint()は残しつつ、並行してログ出力（段階的移行）
+- OpenAI APIのtoken使用量が正確に記録されることを確認
+
+---
+
+### Day 17: 2025-10-22 - ドキュメント・テスト実装
+
+#### 実施作業
+- [x] **監視計画文書作成**
+  - MONITORING_PLAN.md作成（日本語、460行）
+  - MONITORING_PLAN_EN.md作成（英語完全翻訳、460行）
+  - 監視目的、アーキテクチャ、SLI/SLO/SLA定義
+  - アラート閾値、トラブルシューティング手順
+  - ログ調査方法、将来の拡張提案
+
+- [x] **ユニットテスト実装**
+  - test_logging_config.py（190行、14テスト）
+    - PIIMasker、JSONFormatter、StructuredLogger、get_logger
+  - test_metrics.py（356行、16テスト）
+    - データクラス、MetricsCollector、シングルトン、スレッドセーフ、P95計算
+
+- [x] **統合テスト実装**
+  - test_monitoring.py（341行、16テスト）
+    - モニタリングエンドポイント、リクエストIDトレース
+    - メトリクス蓄積、ヘルスステータス判定、エラー記録
+
+- [x] **テスト修正**
+  - ErrorMetric subscript issue修正（dict → attribute access）
+  - openai_operations missing issue修正（get_summary()リファクタ）
+  - Credit card masking test調整
+
+#### 変更ファイル
+**新規作成**
+- `docs/monitoring/MONITORING_PLAN.md` - 日本語監視計画
+- `docs/monitoring/MONITORING_PLAN_EN.md` - 英語監視計画
+- `backend/tests/unit/test_logging_config.py` - ログテスト
+- `backend/tests/unit/test_metrics.py` - メトリクステスト
+- `backend/tests/integration/test_monitoring.py` - 統合テスト
+
+**変更**
+- `backend/app/core/metrics.py` - get_summary()リファクタ（openai_operations常時返却）
+- `backend/tests/unit/test_metrics.py` - ErrorMetric test修正
+
+#### 確認・テスト
+- [x] test_logging_config.py: 14テストすべてPASS ✅
+- [x] test_metrics.py: 16テストすべてPASS ✅
+- [x] test_monitoring.py: 16テストすべてPASS ✅
+- [x] **合計: 46テストすべてPASS** 🎉
+
+#### 課題・気づき
+- get_summary()でOpenAI統計を常に計算する必要があった（API呼び出し有無に関わらず）
+- PIIマスキングのカバレッジは基本パターンのみ（本番運用で調整必要）
+- テストカバレッジ: logging_config 92%, metrics 100%, metrics API 100%
 
 ---
 
 ## 📊 実績
 
 ### 達成した成果
-- 成果内容（完了時にまとめ）
+
+✅ **構造化ログ基盤**
+- JSON形式ログ（ISO 8601タイムスタンプ、カスタムフィールド対応）
+- PIIマスキング（email、電話番号、クレジットカード）
+- ログレベル制御（INFO/WARNING/ERROR）
+
+✅ **リクエストトレース**
+- UUID生成によるリクエストID
+- X-Request-IDヘッダー追加
+- request_id伝播（middleware → API → service）
+
+✅ **メトリクス収集**
+- API統計（呼び出し数、応答時間、P95、成功率）
+- OpenAI統計（呼び出し数、トークン数、成功率、操作別内訳）
+- エラー統計（エラー数、エラー率、最近のエラー）
+- スレッドセーフ実装（並行リクエスト対応）
+
+✅ **モニタリングAPI**
+- GET /api/v1/metrics - メトリクスサマリー
+- GET /api/v1/health - ヘルスチェック（healthy/degraded/unhealthy）
+- GET /api/v1/metrics/errors - エラー一覧
+- POST /api/v1/metrics/reset - メトリクスリセット
+
+✅ **監視計画文書**
+- 日本語・英語完全対応（各460行）
+- SLI/SLO/SLA定義
+- アラート閾値・対応手順
+- トラブルシューティングガイド
+
+✅ **包括的テスト**
+- ユニットテスト30件（logging + metrics）
+- 統合テスト16件（monitoring endpoints）
+- 全46テストPASS、デグレなし
 
 ### 監視改善効果
-- 改善効果（完了時にまとめ）
+
+**導入前**
+- ❌ print()による非構造化ログ
+- ❌ リクエスト追跡不可
+- ❌ メトリクス収集なし
+- ❌ 運用状況の可視化なし
+
+**導入後**
+- ✅ JSON構造化ログ（検索・集計可能）
+- ✅ リクエストID追跡（分散トレース準備完了）
+- ✅ リアルタイムメトリクス収集
+- ✅ ヘルスステータス自動判定
+- ✅ 運用ダッシュボード構築可能
+
+**期待効果**
+- 🎯 障害発生時の原因特定時間 → 50%削減
+- 🎯 パフォーマンス問題の早期発見 → リアルタイム検知
+- 🎯 OpenAI APIコスト管理 → トークン消費量可視化
+- 🎯 SLO達成状況の追跡 → 定量的評価可能
 
 ### 学び
-- 学んだこと（完了時にまとめ）
+
+**技術的学び**
+- FastAPIのミドルウェア実装（BaseHTTPMiddleware）
+- スレッドセーフなシングルトンパターン（threading.Lock）
+- P95パーセンタイル計算（統計指標）
+- 正規表現によるPIIマスキング
+
+**設計上の学び**
+- OpenAI統計はAPI呼び出し有無に関わらず常に計算すべき
+- request_idはOptional[str]で後方互換性を保つ
+- メトリクスはメモリ蓄積されるため定期的にreset()必要
+- ログ・メトリクス追加時はデグレ確認を徹底
+
+**テスト上の学び**
+- dataclassはdict subscript不可（attribute access必須）
+- カバレッジ目標: コア機能92%以上
+- 統合テストでスレッドセーフ性も確認（concurrent requests）
 
 ---
 
 ## ✅ 完了チェックリスト
-- [ ] 構造化ログ実装完了
-- [ ] リクエストIDトレース実装完了
-- [ ] メトリクス収集実装完了
-- [ ] メトリクスエンドポイント動作確認
-- [ ] PIIマスキング実装完了
-- [ ] 監視計画文書作成完了（ja/en）
-- [ ] テスト実装完了
-- [ ] ドキュメント更新完了
+- [x] 構造化ログ実装完了
+- [x] リクエストIDトレース実装完了
+- [x] メトリクス収集実装完了
+- [x] メトリクスエンドポイント動作確認
+- [x] PIIマスキング実装完了
+- [x] 監視計画文書作成完了（ja/en）
+- [x] テスト実装完了
+- [x] ドキュメント更新完了
+- [x] 全テストPASS（46件）
+- [x] デグレなし確認
 
 ## 📚 参考資料
 - todo.md (910-1108行目): TODO-7詳細
@@ -502,6 +707,6 @@ class PIIMasker:
 ---
 
 **作成日**: 2025-10-18
-**最終更新**: 2025-10-18
+**最終更新**: 2025-10-22
 **担当**: Claude Code
-**ステータス**: 計画完了
+**ステータス**: 完了 ✅

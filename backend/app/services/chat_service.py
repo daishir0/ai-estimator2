@@ -3,19 +3,21 @@
 - Quick actions: Immediate calculation with local logic
 - AI estimate adjustment: Generate proposals with OpenAI for free input (message) (synchronous)
 """
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import uuid
-import logging
+import time
 from app.models import Estimate, Task, Message
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.i18n import t
 from app.services.retry_service import retry_with_exponential_backoff
 from app.services.circuit_breaker import openai_circuit_breaker
+from app.core.logging_config import get_logger
+from app.core.metrics import metrics_collector
 import json
 import re
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 try:
     import openai
@@ -464,7 +466,7 @@ class ChatService:
             return []
 
     @retry_with_exponential_backoff()
-    def _call_proposal_llm_with_retry(self, prompt: str) -> str:
+    def _call_proposal_llm_with_retry(self, prompt: str, request_id: Optional[str] = None) -> str:
         """Call LLM for proposal generation with retry logic"""
         client = openai.OpenAI(
             api_key=settings.OPENAI_API_KEY,
@@ -474,21 +476,69 @@ class ChatService:
         # System prompt with language instruction
         system_prompt = f"{t('prompts.chat_system')}\n\n{t('prompts.chat_language_instruction')}\n\nあなたは厳密なフォーマットで応答する上級PMです。JSON形式のみで返答してください。"
 
-        resp = client.chat.completions.create(
-            model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o'),
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=2000,
-            temperature=0.7,
-            timeout=settings.OPENAI_TIMEOUT
-        )
+        model = getattr(settings, 'OPENAI_MODEL', 'gpt-4o')
+        start_time = time.perf_counter()
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=2000,
+                temperature=0.7,
+                timeout=settings.OPENAI_TIMEOUT
+            )
+            duration = time.perf_counter() - start_time
 
-        return resp.choices[0].message.content.strip()
+            # Record successful OpenAI API call metrics (TODO-9: added input/output tokens for cost tracking)
+            metrics_collector.record_openai_call(
+                model=model,
+                tokens=resp.usage.total_tokens,
+                duration=duration,
+                success=True,
+                request_id=request_id or "unknown",
+                operation="chat",
+                input_tokens=resp.usage.prompt_tokens,
+                output_tokens=resp.usage.completion_tokens
+            )
+
+            logger.debug(
+                "OpenAI API call successful (chat proposal)",
+                request_id=request_id,
+                model=model,
+                tokens=resp.usage.total_tokens,
+                duration=round(duration, 3)
+            )
+
+            return resp.choices[0].message.content.strip()
+
+        except Exception as e:
+            duration = time.perf_counter() - start_time
+
+            # Record failed OpenAI API call metrics (TODO-9: added input/output tokens for cost tracking)
+            metrics_collector.record_openai_call(
+                model=model,
+                tokens=0,
+                duration=duration,
+                success=False,
+                request_id=request_id or "unknown",
+                operation="chat",
+                input_tokens=0,
+                output_tokens=0
+            )
+
+            logger.error(
+                "OpenAI API call failed (chat proposal)",
+                request_id=request_id,
+                model=model,
+                error=str(e),
+                duration=round(duration, 3)
+            )
+            raise
 
     @retry_with_exponential_backoff()
-    def _call_adjustment_llm_with_retry(self, prompt: dict) -> str:
+    def _call_adjustment_llm_with_retry(self, prompt: dict, request_id: Optional[str] = None) -> str:
         """Call LLM for general adjustment with retry logic"""
         client = openai.OpenAI(
             api_key=settings.OPENAI_API_KEY,
@@ -498,18 +548,66 @@ class ChatService:
         # System prompt with language instruction
         system_prompt = f"{t('prompts.chat_system')}\n\n{t('prompts.chat_language_instruction')}\n\nあなたは厳密なフォーマットで応答する上級PMです。"
 
-        resp = client.chat.completions.create(
-            model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini'),
-            messages=[
-                {"role": "system", "content": system_prompt},
-                prompt,
-            ],
-            max_tokens=1000,
-            temperature=0.2,
-            timeout=settings.OPENAI_TIMEOUT
-        )
+        model = getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini')
+        start_time = time.perf_counter()
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    prompt,
+                ],
+                max_tokens=1000,
+                temperature=0.2,
+                timeout=settings.OPENAI_TIMEOUT
+            )
+            duration = time.perf_counter() - start_time
 
-        return resp.choices[0].message.content.strip()
+            # Record successful OpenAI API call metrics (TODO-9: added input/output tokens for cost tracking)
+            metrics_collector.record_openai_call(
+                model=model,
+                tokens=resp.usage.total_tokens,
+                duration=duration,
+                success=True,
+                request_id=request_id or "unknown",
+                operation="chat",
+                input_tokens=resp.usage.prompt_tokens,
+                output_tokens=resp.usage.completion_tokens
+            )
+
+            logger.debug(
+                "OpenAI API call successful (chat adjustment)",
+                request_id=request_id,
+                model=model,
+                tokens=resp.usage.total_tokens,
+                duration=round(duration, 3)
+            )
+
+            return resp.choices[0].message.content.strip()
+
+        except Exception as e:
+            duration = time.perf_counter() - start_time
+
+            # Record failed OpenAI API call metrics (TODO-9: added input/output tokens for cost tracking)
+            metrics_collector.record_openai_call(
+                model=model,
+                tokens=0,
+                duration=duration,
+                success=False,
+                request_id=request_id or "unknown",
+                operation="chat",
+                input_tokens=0,
+                output_tokens=0
+            )
+
+            logger.error(
+                "OpenAI API call failed (chat adjustment)",
+                request_id=request_id,
+                model=model,
+                error=str(e),
+                duration=round(duration, 3)
+            )
+            raise
 
     # --- 変更を見積に適用 ---
     def _apply_changes_to_estimates(

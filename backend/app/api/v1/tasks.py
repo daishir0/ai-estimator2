@@ -1,5 +1,5 @@
 """タスクAPIエンドポイント"""
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Request
 from pydantic import BaseModel
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
@@ -10,6 +10,9 @@ import shutil
 import uuid
 
 from app.db.database import get_db
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 from app.schemas.task import (
     TaskResponse,
     TaskStatusResponse,
@@ -134,12 +137,13 @@ async def create_task(
 
 
 @router.get("/tasks/{task_id}/questions", response_model=List[str])
-async def get_questions(task_id: str, db: Session = Depends(get_db)):
+async def get_questions(task_id: str, request: Request, db: Session = Depends(get_db)):
     """
     タスクに対する質問を生成
 
     - **task_id**: タスクID
     """
+    request_id = getattr(request.state, 'request_id', None)
     task_service = TaskService(db)
     task = task_service.get_task(task_id)
 
@@ -147,6 +151,7 @@ async def get_questions(task_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="タスクが見つかりません")
 
     try:
+        logger.info("Starting question generation", request_id=request_id, task_id=task_id)
         # ファイルから成果物読み込み (Excel/CSV auto-detect)
         input_service = InputService()
         if task.excel_file_path.endswith('.csv'):
@@ -157,21 +162,20 @@ async def get_questions(task_id: str, db: Session = Depends(get_db)):
         # 質問生成
         question_service = QuestionService()
         questions = question_service.generate_questions(
-            deliverables, task.system_requirements or ""
+            deliverables, task.system_requirements or "", request_id
         )
 
+        logger.info("Question generation completed", request_id=request_id, task_id=task_id, question_count=len(questions))
         return questions
 
     except Exception as e:
-        import traceback
-        print(f"[API] /answers ERROR task_id={task_id}: {e}")
-        traceback.print_exc()
+        logger.error("Question generation failed", request_id=request_id, task_id=task_id, error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/tasks/{task_id}/answers")
 async def submit_answers(
-    task_id: str, qa_pairs: List[QAPairRequest], db: Session = Depends(get_db)
+    task_id: str, qa_pairs: List[QAPairRequest], request: Request, db: Session = Depends(get_db)
 ):
     """
     質問への回答を登録してタスク処理を開始
@@ -179,6 +183,7 @@ async def submit_answers(
     - **task_id**: タスクID
     - **qa_pairs**: 質問と回答のペアリスト
     """
+    request_id = getattr(request.state, 'request_id', None)
     task_service = TaskService(db)
     task = task_service.get_task(task_id)
 
@@ -192,19 +197,20 @@ async def submit_answers(
             safety_service.validate_and_reject(qa.answer, f"answer_{i+1}")
 
     try:
-        print(f"[API] /answers start task_id={task_id} qa_count={len(qa_pairs)}")
+        logger.info("Starting answer submission", request_id=request_id, task_id=task_id, qa_count=len(qa_pairs))
         # Q&Aペアを保存
         questions = [qa.question for qa in qa_pairs]
         answers = [qa.answer for qa in qa_pairs]
         task_service.save_qa_pairs(task_id, questions, answers)
 
         # タスク処理を実行
-        task_service.process_task(task_id)
-        print(f"[API] /answers done task_id={task_id}")
+        task_service.process_task(task_id, request_id)
+        logger.info("Answer submission completed", request_id=request_id, task_id=task_id)
 
         return {"message": "タスク処理を開始しました", "task_id": task_id}
 
     except Exception as e:
+        logger.error("Answer submission failed", request_id=request_id, task_id=task_id, error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -541,4 +547,103 @@ async def get_translations():
     return {
         "language": i18n.language,
         "translations": i18n.translations
+    }
+
+
+@router.delete("/tasks/{task_id}")
+async def delete_task(task_id: str, db: Session = Depends(get_db)):
+    """
+    Delete task and all related data (GDPR compliance)
+
+    - **task_id**: Task ID to delete
+
+    Returns:
+        Success message
+    """
+    from app.models.task import Task
+    from app.models.deliverable import Deliverable
+    from app.models.qa_pair import QAPair
+    from app.models.estimate import Estimate
+    from app.models.message import Message
+
+    # Check if task exists
+    task = db.query(Task).filter(Task.id == task_id).first()
+
+    if not task:
+        raise HTTPException(status_code=404, detail=t('messages.task_not_found'))
+
+    # Delete related data (cascade deletion)
+    db.query(Deliverable).filter(Deliverable.task_id == task_id).delete()
+    db.query(QAPair).filter(QAPair.task_id == task_id).delete()
+    db.query(Estimate).filter(Estimate.task_id == task_id).delete()
+    db.query(Message).filter(Message.task_id == task_id).delete()
+
+    # Delete files (if exist)
+    if task.excel_file_path and os.path.exists(task.excel_file_path):
+        try:
+            os.remove(task.excel_file_path)
+            logger.info(f"Deleted file: {task.excel_file_path}", task_id=task_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete file: {task.excel_file_path}", task_id=task_id, error=str(e))
+
+    if task.result_file_path and os.path.exists(task.result_file_path):
+        try:
+            os.remove(task.result_file_path)
+            logger.info(f"Deleted file: {task.result_file_path}", task_id=task_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete file: {task.result_file_path}", task_id=task_id, error=str(e))
+
+    # Delete task
+    db.delete(task)
+    db.commit()
+
+    logger.info(f"Task and all related data deleted (GDPR compliance)", task_id=task_id)
+
+    return {"message": t('messages.task_deleted_successfully'), "task_id": task_id}
+
+
+@router.get("/tasks/{task_id}/privacy")
+async def get_task_privacy_info(task_id: str, db: Session = Depends(get_db)):
+    """
+    Get privacy information for a task
+
+    - **task_id**: Task ID
+
+    Returns:
+        Privacy information including data retention and auto-deletion schedule
+    """
+    from app.models.task import Task
+    from datetime import datetime, timedelta
+
+    # Check if task exists
+    task = db.query(Task).filter(Task.id == task_id).first()
+
+    if not task:
+        raise HTTPException(status_code=404, detail=t('messages.task_not_found'))
+
+    # Calculate data retention period
+    created_at = task.created_at
+    retention_days = settings.DATA_RETENTION_DAYS
+    deletion_date = created_at + timedelta(days=retention_days)
+    days_remaining = (deletion_date - datetime.now()).days
+
+    # Check if PII exists in task data
+    from app.services.privacy_service import PrivacyService
+    privacy_service = PrivacyService()
+
+    has_pii = False
+    if task.system_requirements:
+        is_compliant, _ = privacy_service.check_pii_compliance(task.system_requirements)
+        has_pii = not is_compliant
+
+    return {
+        "task_id": task_id,
+        "created_at": created_at.isoformat(),
+        "retention_days": retention_days,
+        "auto_deletion_date": deletion_date.isoformat(),
+        "days_remaining": max(0, days_remaining),
+        "can_delete": True,
+        "has_pii": has_pii,
+        "auto_cleanup_enabled": settings.AUTO_CLEANUP_ENABLED,
+        "privacy_policy_version": settings.PRIVACY_POLICY_VERSION,
     }

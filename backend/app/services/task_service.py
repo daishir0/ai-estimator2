@@ -13,6 +13,9 @@ from app.services.question_service import QuestionService
 from app.services.estimator_service import EstimatorService
 from app.services.export_service import ExportService
 from app.core.config import settings
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class TaskService:
@@ -132,26 +135,26 @@ class TaskService:
             self.db.add(est)
         self.db.commit()
 
-    def process_task(self, task_id: str) -> None:
+    def process_task(self, task_id: str, request_id: Optional[str] = None) -> None:
         """タスクを処理する（見積り実行）"""
         try:
-            print(f"[TS] process_task start task_id={task_id}")
+            logger.info("Starting task processing", request_id=request_id, task_id=task_id)
             task = self.get_task(task_id)
             if not task:
                 raise ValueError(f"Task {task_id} not found")
 
             # ステータスを処理中に更新
             self.update_task_status(task_id, TaskStatus.PROCESSING)
-            print(f"[TS] status=processing task_id={task_id}")
+            logger.info("Task status updated", request_id=request_id, task_id=task_id, status="processing")
 
             # ファイルから成果物を読み込み（Excel/CSV自動判定）
             input_service = InputService()
             if task.excel_file_path.endswith('.csv'):
                 deliverables = input_service.load_csv_data(task.excel_file_path)
-                print(f"[TS] loaded deliverables from CSV n={len(deliverables)} task_id={task_id}")
+                logger.info("Loaded deliverables from CSV", request_id=request_id, task_id=task_id, count=len(deliverables))
             else:
                 deliverables = input_service.load_excel_data(task.excel_file_path)
-                print(f"[TS] loaded deliverables from Excel n={len(deliverables)} task_id={task_id}")
+                logger.info("Loaded deliverables from Excel", request_id=request_id, task_id=task_id, count=len(deliverables))
 
             # 成果物を保存
             self.save_deliverables(task_id, deliverables)
@@ -164,36 +167,34 @@ class TaskService:
 
             # 見積り実行
             estimator = EstimatorService()
-            print(f"[TS] estimating... task_id={task_id}")
+            logger.info("Starting estimation", request_id=request_id, task_id=task_id)
             estimates = estimator.generate_estimates(
-                deliverables, task.system_requirements or "", qa_pairs
+                deliverables, task.system_requirements or "", qa_pairs, request_id
             )
-            print(f"[TS] estimates ready n={len(estimates)} task_id={task_id}")
+            logger.info("Estimation completed", request_id=request_id, task_id=task_id, estimate_count=len(estimates))
 
             # 見積りを保存
             self.save_estimates(task_id, estimates)
 
             # 合計計算
             totals = estimator.calculate_totals(estimates)
-            print(f"[TS] totals subtotal={totals['subtotal']:.0f} task_id={task_id}")
+            logger.info("Calculated totals", request_id=request_id, task_id=task_id, subtotal=totals['subtotal'])
 
             # Excel出力
             export_service = ExportService()
             result_file_path = export_service.write_excel_output(
                 task.excel_file_path, estimates, totals, qa_pairs, settings.UPLOAD_DIR
             )
-            print(f"[TS] excel written path={result_file_path} task_id={task_id}")
+            logger.info("Excel file written", request_id=request_id, task_id=task_id, file_path=result_file_path)
 
             # タスク更新
             task.result_file_path = result_file_path
             task.status = TaskStatus.COMPLETED
             task.updated_at = datetime.utcnow()
             self.db.commit()
-            print(f"[TS] process_task completed task_id={task_id}")
+            logger.info("Task processing completed", request_id=request_id, task_id=task_id, status="completed")
 
         except Exception as e:
-            import traceback
-            print(f"[TS] タスク処理エラー task_id={task_id}: {e}")
-            traceback.print_exc()
+            logger.error("Task processing failed", request_id=request_id, task_id=task_id, error=str(e))
             self.update_task_status(task_id, TaskStatus.FAILED, str(e))
             raise

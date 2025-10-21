@@ -142,6 +142,8 @@
     "fit_budget_adjusted": "総額 {current} 円 → {new} 円（上限 {cap} 円に合わせ係数 {ratio} を適用）",
     "unit_cost_changed": "単価を {cost} 円/人日に変更しました。",
     "risk_buffer_added": "リスクバッファ {percent}% を上乗せしました。",
+    "rate_limit_exceeded": "リクエスト数が上限に達しました。しばらくしてから再試行してください。",
+    "cost_limit_exceeded": "月次コスト上限に達しました。システム管理者に連絡してください。",
     "ai_request_received": "ご要望を承知しました。以下の調整案を適用します。",
     "suggestion_reduce_20": "{name}を20%下げる",
     "suggestion_exclude": "{name}を除外",
@@ -175,7 +177,21 @@
     "fallback_estimation_note": "AI見積りが利用できないため、簡易計算を使用しています。",
     "fallback_estimation_reason": "OpenAI APIに一時的にアクセスできないため、キーワードベースの簡易見積りを使用しました。",
     "max_iterations_exceeded": "最大イテレーション数を超過しました",
-    "file_too_large": "ファイルサイズが大きすぎます"
+    "file_too_large": "ファイルサイズが大きすぎます",
+    "pii_detected": "個人情報が検出されました",
+    "task_not_found": "タスクが見つかりません。",
+    "task_deleted_successfully": "タスクが正常に削除されました。",
+    "privacy_info_retrieved": "プライバシー情報を取得しました。",
+    "data_retention_notice": "データは{days}日後に自動削除されます。",
+    "deletion_confirmation": "本当に削除しますか？この操作は取り消せません。",
+    "pii_warning": "個人情報が含まれている可能性があります。"
+  },
+  "privacy": {
+    "data_retention_days": "30日間",
+    "auto_deletion_enabled": "有効",
+    "auto_deletion_disabled": "無効",
+    "privacy_policy_version": "バージョン {version}",
+    "contact_info": "お問い合わせ: @realdaishiro (X)"
   },
   "excel": {
     "sheet_name": "見積り",

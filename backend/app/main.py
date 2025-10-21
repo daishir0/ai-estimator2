@@ -6,9 +6,11 @@ from pathlib import Path
 import os
 
 from app.core.config import settings
-from app.api.v1 import tasks
+from app.api.v1 import tasks, metrics, admin  # TODO-9: added admin
 from app.db.database import init_db
 from app.middleware.resource_limiter import ResourceLimiterMiddleware, FileSizeLimiterMiddleware
+from app.middleware.request_id import RequestIDMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware  # TODO-9
 
 app = FastAPI(
     title="AI見積りシステム API",
@@ -30,6 +32,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request ID middleware - add unique request ID to each request (TODO-7)
+app.add_middleware(RequestIDMiddleware)
+
+# Rate limit middleware - prevent DoS attacks (TODO-9)
+app.add_middleware(RateLimitMiddleware)
 
 # Resource limiter middleware - limit concurrent requests to resource-intensive endpoints
 app.add_middleware(
@@ -71,6 +79,8 @@ async def health_check():
 
 # ルーター登録
 app.include_router(tasks.router, prefix=f"{settings.API_V1_STR}", tags=["tasks"])
+app.include_router(metrics.router, prefix=f"{settings.API_V1_STR}", tags=["metrics"])
+app.include_router(admin.router, prefix=f"{settings.API_V1_STR}", tags=["admin"])  # TODO-9
 
 # UI (静的ファイル) 提供
 static_dir = Path(__file__).resolve().parent / "static"

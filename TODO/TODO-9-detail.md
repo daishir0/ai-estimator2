@@ -433,44 +433,132 @@ class Settings(BaseSettings):
 
 ## 🔧 実施内容（実績）
 
-### Day 20: [日付]
+### Day 20: 2025-10-22
+
 #### 実施作業
-- [ ] 作業内容（実装時に記録）
+
+**Phase 1: コスト追跡機能追加 (2-3時間)**
+- [x] `app/core/metrics.py`にコスト計算機能を追加
+  - OpenAI API pricing定数を追加（$0.15/1M input, $0.60/1M output）
+  - `_calculate_cost()`メソッド実装
+  - `_auto_reset_if_needed()`で日次・月次自動リセット実装
+  - `_check_cost_limit()`でコスト上限チェック実装
+  - `get_cost_summary()`でコストサマリー取得実装
+  - `OpenAICallMetric`にinput_tokens, output_tokens, cost_usdフィールド追加
+- [x] `app/core/config.py`にコスト上限設定を追加
+  - DAILY_COST_LIMIT: $10/日
+  - MONTHLY_COST_LIMIT: $200/月
+- [x] OpenAI API呼び出し箇所を修正（input_tokens, output_tokensを記録）
+  - `app/services/estimator_service.py`: 2箇所
+  - `app/services/question_service.py`: 2箇所
+  - `app/services/chat_service.py`: 4箇所
+
+**Phase 2: レート制限実装 (2-3時間)**
+- [x] `app/core/rate_limiter.py`新規作成
+  - スライディングウィンドウアルゴリズム実装
+  - RateLimiterクラス実装（check_limit, reset_client, get_remaining, get_status）
+- [x] `app/middleware/rate_limit.py`新規作成
+  - RateLimitMiddleware実装
+  - 429エラーレスポンス実装
+  - レート制限ヘッダー追加（X-RateLimit-Limit, X-RateLimit-Remaining）
+- [x] `app/main.py`にミドルウェア追加
+- [x] `app/core/config.py`にレート制限設定を追加
+  - RATE_LIMIT_MAX_REQUESTS: 100リクエスト/時間
+  - RATE_LIMIT_WINDOW_SECONDS: 3600秒
+
+**Phase 3: 管理者エンドポイント (1-2時間)**
+- [x] `app/api/v1/admin.py`新規作成
+  - `/api/v1/admin/costs`: コスト状況取得
+  - `/api/v1/admin/rate-limits`: レート制限状況取得
+  - `/api/v1/admin/reset-rate-limit/{client_id}`: レート制限リセット
+  - `/api/v1/admin/metrics`: 総合メトリクス取得
+- [x] `app/main.py`にadminルーター登録
+
+**Phase 4: 多言語対応・ドキュメント (1-2時間)**
+- [x] 翻訳ファイル更新
+  - `backend/app/locales/ja.json`: rate_limit_exceeded, cost_limit_exceeded追加
+  - `backend/app/locales/en.json`: 同上
+- [x] 緊急停止手順文書作成
+  - `docs/operations/EMERGENCY_SHUTDOWN.ja.md`
+  - `docs/operations/EMERGENCY_SHUTDOWN.en.md`
+
+**Phase 5: テスト実装 (1-2時間)**
+- [x] ユニットテスト作成
+  - `backend/tests/unit/test_rate_limiter.py`: 7テストケース
+  - `backend/tests/unit/test_metrics_cost.py`: 6テストケース
 
 #### 変更ファイル
-- ファイル一覧（実装時に記録）
+
+**新規作成ファイル (9ファイル)**:
+- `backend/app/core/rate_limiter.py`
+- `backend/app/middleware/rate_limit.py`
+- `backend/app/api/v1/admin.py`
+- `docs/operations/EMERGENCY_SHUTDOWN.ja.md`
+- `docs/operations/EMERGENCY_SHUTDOWN.en.md`
+- `backend/tests/unit/test_rate_limiter.py`
+- `backend/tests/unit/test_metrics_cost.py`
+
+**変更ファイル (9ファイル)**:
+- `backend/app/core/metrics.py`
+- `backend/app/core/config.py`
+- `backend/app/services/estimator_service.py`
+- `backend/app/services/question_service.py`
+- `backend/app/services/chat_service.py`
+- `backend/app/main.py`
+- `backend/app/locales/ja.json`
+- `backend/app/locales/en.json`
 
 #### 確認・テスト
-- [ ] テスト結果（実装時に記録）
+- [x] システム再起動成功
+- [x] 管理者エンドポイント動作確認
+  - `/api/v1/admin/costs`: 正常動作
+  - `/api/v1/admin/rate-limits`: 正常動作
+  - `/api/v1/admin/metrics`: 正常動作
+- [x] ユニットテスト実行: **13テストすべて成功**
+  - test_rate_limiter.py: 7 passed
+  - test_metrics_cost.py: 6 passed
 
 #### 課題・気づき
-- 課題・気づき（実装時に記録）
+- **実装方針変更**: 当初計画では独立した`CostTracker`クラスを作成予定だったが、既存の`MetricsCollector`を拡張する方針に変更。これにより、コードの一貫性を保ち、変更範囲を最小化できた。
+- **後方互換性**: `record_openai_call()`に`input_tokens`と`output_tokens`をオプション引数として追加し、既存のコードが破壊されないよう配慮。
+- **循環importの回避**: `_check_cost_limit()`内でsettings, logger, t()をimportする際、循環importを避けるためメソッド内でimportを実施。
+- **テストカバレッジ**: rate_limiter: 93%, metrics cost tracking: 70%と高いカバレッジを達成。
 
 ---
 
 ## 📊 実績
 
 ### 達成した成果
-- 成果内容（完了時にまとめ）
+1. **コスト追跡システム実装**: OpenAI API使用コストをリアルタイムで追跡し、日次・月次の上限チェックを自動化
+2. **レート制限実装**: DoS攻撃対策として、時間あたりのリクエスト数を制限（100req/時）
+3. **管理者エンドポイント**: コスト・レート制限の監視・管理APIを提供
+4. **緊急停止手順書**: ja/en両言語で詳細な手順書を作成
+5. **テスト実装**: 13テストケースすべて成功、高いカバレッジを達成
 
-### コスト削減効果
-- 削減効果（完了時にまとめ）
+### セキュリティ・運用上の効果
+1. **コスト超過防止**: 月次コスト上限（$200）到達時に自動停止、予期せぬ高額請求を防止
+2. **DoS攻撃対策**: レート制限により、悪意あるアクセスを自動的にブロック
+3. **可視化**: 管理者エンドポイントにより、コスト・利用状況をリアルタイムで監視可能
+4. **緊急対応**: 緊急停止手順書により、問題発生時の迅速な対応が可能
 
 ### 学び
-- 学んだこと（完了時にまとめ）
+1. **既存システムの拡張**: 新規クラスを作成するより、既存のMetricsCollectorを拡張する方が効率的だった
+2. **スレッドセーフ**: マルチスレッド環境でのコスト追跡には、適切なロック管理が重要
+3. **後方互換性**: オプション引数を使用することで、既存コードへの影響を最小化できた
+4. **統合テスト vs ユニットテスト**: 時間制約下では、ユニットテストで基本動作を確保し、実際のエンドポイント動作確認で統合テストを代替
 
 ---
 
 ## ✅ 完了チェックリスト
-- [ ] レート制限実装完了
-- [ ] レート制限ミドルウェア実装完了
-- [ ] OpenAI APIコスト追跡実装完了
-- [ ] コスト上限チェック動作確認
-- [ ] コスト管理エンドポイント動作確認
-- [ ] 緊急停止手順文書作成完了（ja/en）
-- [ ] 多言語対応確認（ja/en）
-- [ ] テスト実装完了
-- [ ] ドキュメント更新完了
+- [x] レート制限実装完了
+- [x] レート制限ミドルウェア実装完了
+- [x] OpenAI APIコスト追跡実装完了
+- [x] コスト上限チェック動作確認
+- [x] コスト管理エンドポイント動作確認
+- [x] 緊急停止手順文書作成完了（ja/en）
+- [x] 多言語対応確認（ja/en）
+- [x] テスト実装完了
+- [x] ドキュメント更新完了
 
 ## 📚 参考資料
 - todo.md (1269-1460行目): TODO-9詳細
@@ -480,6 +568,6 @@ class Settings(BaseSettings):
 ---
 
 **作成日**: 2025-10-18
-**最終更新**: 2025-10-18
+**最終更新**: 2025-10-22
 **担当**: Claude Code
-**ステータス**: 計画完了
+**ステータス**: ✅ 完了
