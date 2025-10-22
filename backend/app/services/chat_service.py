@@ -43,16 +43,35 @@ class ChatService:
         return {"subtotal": subtotal, "tax": tax, "total": total}
 
     def _as_dicts(self, rows: List[Estimate]) -> List[Dict[str, Any]]:
-        return [
-            {
+        from app.utils.reasoning_separator import auto_separate_reasoning
+        result = []
+        for r in rows:
+            # DEBUG: Print original values from DB
+            print(f"[DEBUG _as_dicts] deliverable_name={r.deliverable_name}")
+            print(f"[DEBUG _as_dicts] reasoning_breakdown from DB (first 100 chars): {(r.reasoning_breakdown or '')[:100]}")
+            print(f"[DEBUG _as_dicts] reasoning_notes from DB (first 100 chars): {(r.reasoning_notes or '')[:100]}")
+
+            # Auto-separate reasoning_breakdown and reasoning_notes
+            breakdown, notes = auto_separate_reasoning(
+                r.reasoning_breakdown or "",
+                r.reasoning_notes or ""
+            )
+
+            # DEBUG: Print after auto-separation
+            print(f"[DEBUG _as_dicts] After auto_separate:")
+            print(f"[DEBUG _as_dicts]   breakdown (first 100 chars): {breakdown[:100]}")
+            print(f"[DEBUG _as_dicts]   notes (first 100 chars): {notes[:100]}")
+
+            result.append({
                 "deliverable_name": r.deliverable_name,
                 "deliverable_description": r.deliverable_description,
                 "person_days": float(r.person_days),
                 "amount": float(r.amount),
                 "reasoning": r.reasoning or "",
-            }
-            for r in rows
-        ]
+                "reasoning_breakdown": breakdown,
+                "reasoning_notes": notes,
+            })
+        return result
 
     def save_user_message(self, task_id: str, content: str) -> None:
         m = Message(id=str(uuid.uuid4()), task_id=task_id, role="user", content=content)
@@ -76,7 +95,22 @@ class ChatService:
         for e in estimates:
             pd = round(float(e["person_days"]) * ratio, 1)
             amount = pd * (float(e["amount"]) / max(float(e["person_days"]) or 1.0, 0.1))
-            out.append({**e, "person_days": pd, "amount": amount, "reasoning": (e.get("reasoning") or "")})
+            # Preserve reasoning_breakdown and reasoning_notes
+            reasoning_breakdown = e.get("reasoning_breakdown") or e.get("reasoning") or ""
+            reasoning_notes = e.get("reasoning_notes") or ""
+            adjustment_note = f"【調整】上限予算に合わせて係数 {ratio:.2f} を適用"
+            if reasoning_notes:
+                reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
+            else:
+                reasoning_notes = adjustment_note
+            out.append({
+                **e,
+                "person_days": pd,
+                "amount": amount,
+                "reasoning": e.get("reasoning") or "",
+                "reasoning_breakdown": reasoning_breakdown,
+                "reasoning_notes": reasoning_notes
+            })
         note = f"総額 {int(current):,} 円 → {int(self._calc_totals(out)['total']):,} 円（上限 {int(cap):,} 円に合わせ係数 {ratio:.2f} を適用）"
         return out, note
 
@@ -85,7 +119,20 @@ class ChatService:
         for e in estimates:
             pd = float(e["person_days"])
             amount = pd * new_unit_cost
-            out.append({**e, "amount": amount})
+            # Preserve reasoning_breakdown and reasoning_notes
+            reasoning_breakdown = e.get("reasoning_breakdown") or e.get("reasoning") or ""
+            reasoning_notes = e.get("reasoning_notes") or ""
+            adjustment_note = f"【調整】単価を {int(new_unit_cost):,} 円/人日に変更"
+            if reasoning_notes:
+                reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
+            else:
+                reasoning_notes = adjustment_note
+            out.append({
+                **e,
+                "amount": amount,
+                "reasoning_breakdown": reasoning_breakdown,
+                "reasoning_notes": reasoning_notes
+            })
         note = f"単価を {int(new_unit_cost):,} 円/人日に変更しました。"
         return out, note
 
@@ -94,7 +141,20 @@ class ChatService:
         out = []
         for e in estimates:
             amount = float(e["amount"]) * factor
-            out.append({**e, "amount": amount})
+            # Preserve reasoning_breakdown and reasoning_notes
+            reasoning_breakdown = e.get("reasoning_breakdown") or e.get("reasoning") or ""
+            reasoning_notes = e.get("reasoning_notes") or ""
+            adjustment_note = f"【調整】リスクバッファ {percent:.1f}% を上乗せ"
+            if reasoning_notes:
+                reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
+            else:
+                reasoning_notes = adjustment_note
+            out.append({
+                **e,
+                "amount": amount,
+                "reasoning_breakdown": reasoning_breakdown,
+                "reasoning_notes": reasoning_notes
+            })
         note = f"リスクバッファ {percent:.1f}% を上乗せしました。"
         return out, note
 
@@ -206,12 +266,23 @@ class ChatService:
                 except Exception:
                     pass
             # push
+            # Preserve reasoning_breakdown and reasoning_notes
+            reasoning_breakdown = e.get('reasoning_breakdown') or e.get('reasoning') or ''
+            reasoning_notes = e.get('reasoning_notes') or ''
+            if did_change and match:
+                adjustment_note = f"【調整】ルールベース適用（{reduce_ratio*100 if reduce_ratio else 0:.0f}%に調整）"
+                if reasoning_notes:
+                    reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
+                else:
+                    reasoning_notes = adjustment_note
             new_ests.append({
                 'deliverable_name': e.get('deliverable_name') or e.get('name'),
                 'deliverable_description': e.get('deliverable_description') or e.get('description'),
                 'person_days': pd,
                 'amount': amt,
-                'reasoning': e.get('reasoning') or ''
+                'reasoning': e.get('reasoning') or '',
+                'reasoning_breakdown': reasoning_breakdown,
+                'reasoning_notes': reasoning_notes
             })
 
         if not changed and not targets:
@@ -241,7 +312,21 @@ class ChatService:
                     pd = round(float(e['person_days']) * factor, 1)
                     amt = pd * settings.get_daily_unit_cost()
                     changed.append((e.get('deliverable_name') or e.get('name'), float(e['person_days']), pd, int(float(e['amount'])), int(amt)))
-                    tmp.append({**e, 'person_days': pd, 'amount': amt})
+                    # Preserve reasoning_breakdown and reasoning_notes
+                    reasoning_breakdown = e.get('reasoning_breakdown') or e.get('reasoning') or ''
+                    reasoning_notes = e.get('reasoning_notes') or ''
+                    adjustment_note = "【調整】デフォルト削減率15%を適用"
+                    if reasoning_notes:
+                        reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
+                    else:
+                        reasoning_notes = adjustment_note
+                    tmp.append({
+                        **e,
+                        'person_days': pd,
+                        'amount': amt,
+                        'reasoning_breakdown': reasoning_breakdown,
+                        'reasoning_notes': reasoning_notes
+                    })
                 else:
                     tmp.append(e)
             new_ests = tmp
@@ -679,18 +764,34 @@ class ChatService:
         # 読み込み
         if provided_estimates:
             # フロントから現時点表示中の見積りが来た場合はそれを基準にする
-            ests = [
-                {
+            from app.utils.reasoning_separator import auto_separate_reasoning
+            ests = []
+            for e in provided_estimates:
+                # DEBUG: Print provided estimate before separation
+                print(f"[DEBUG process] From frontend (provided): {e.get('deliverable_name') or e.get('name')}")
+                print(f"[DEBUG process]   breakdown (first 100 chars): {(e.get('reasoning_breakdown') or '')[:100]}")
+                print(f"[DEBUG process]   notes (first 100 chars): {(e.get('reasoning_notes') or '')[:100]}")
+
+                # Auto-separate reasoning_breakdown and reasoning_notes from frontend data
+                breakdown, notes = auto_separate_reasoning(
+                    e.get("reasoning_breakdown") or "",
+                    e.get("reasoning_notes") or ""
+                )
+
+                # DEBUG: Print after separation
+                print(f"[DEBUG process]   After auto_separate (from frontend):")
+                print(f"[DEBUG process]     breakdown (first 100 chars): {breakdown[:100]}")
+                print(f"[DEBUG process]     notes (first 100 chars): {notes[:100]}")
+
+                ests.append({
                     "deliverable_name": e.get("deliverable_name") or e.get("name"),
                     "deliverable_description": e.get("deliverable_description") or e.get("description"),
                     "person_days": float(e.get("person_days", 0.0)),
                     "amount": float(e.get("amount", 0.0)),
                     "reasoning": e.get("reasoning") or "",
-                    "reasoning_breakdown": e.get("reasoning_breakdown") or "",
-                    "reasoning_notes": e.get("reasoning_notes") or "",
-                }
-                for e in provided_estimates
-            ]
+                    "reasoning_breakdown": breakdown,
+                    "reasoning_notes": notes,
+                })
         else:
             rows = self._load_estimates(task_id)
             if not rows:
@@ -705,11 +806,26 @@ class ChatService:
 
             try:
                 new_estimates = self._apply_proposal(task_id, proposal_id)
-                totals = self._calc_totals(new_estimates)
+
+                # Auto-separate reasoning_breakdown and reasoning_notes
+                from app.utils.reasoning_separator import auto_separate_reasoning
+                final_estimates = []
+                for est in new_estimates:
+                    breakdown, notes = auto_separate_reasoning(
+                        est.get("reasoning_breakdown") or "",
+                        est.get("reasoning_notes") or ""
+                    )
+                    final_estimates.append({
+                        **est,
+                        "reasoning_breakdown": breakdown,
+                        "reasoning_notes": notes,
+                    })
+
+                totals = self._calc_totals(final_estimates)
 
                 return {
                     "reply_md": "提案を適用しました！",
-                    "estimates": new_estimates,
+                    "estimates": final_estimates,
                     "totals": totals,
                     "version": 2,
                 }
@@ -740,21 +856,49 @@ class ChatService:
                 direction_text = '削減' if adjustment_request['direction'] == 'reduce' else '増額'
                 reply_md = f"約{adjustment_request['amount']:,}円の{direction_text}案を3つご提案いたします。\n\n以下から最適な案をお選びください。"
 
+                # Auto-separate estimates before returning
+                from app.utils.reasoning_separator import auto_separate_reasoning
+                separated_ests = []
+                for est in ests:
+                    breakdown, notes = auto_separate_reasoning(
+                        est.get("reasoning_breakdown") or "",
+                        est.get("reasoning_notes") or ""
+                    )
+                    separated_ests.append({
+                        **est,
+                        "reasoning_breakdown": breakdown,
+                        "reasoning_notes": notes,
+                    })
+
                 # 提案を返却（見積は変更しない）
                 return {
                     "reply_md": reply_md,
                     "proposals": proposals,
-                    "estimates": ests,  # 現在の見積を保持
-                    "totals": self._calc_totals(ests),
+                    "estimates": separated_ests,  # 現在の見積を保持
+                    "totals": self._calc_totals(separated_ests),
                     "version": 2,
                 }
             else:
                 # 提案生成失敗時は従来の処理にフォールバック
+                # Auto-separate estimates before returning
+                from app.utils.reasoning_separator import auto_separate_reasoning
+                separated_ests = []
+                for est in ests:
+                    breakdown, notes = auto_separate_reasoning(
+                        est.get("reasoning_breakdown") or "",
+                        est.get("reasoning_notes") or ""
+                    )
+                    separated_ests.append({
+                        **est,
+                        "reasoning_breakdown": breakdown,
+                        "reasoning_notes": notes,
+                    })
+
                 reply_md = "提案の生成に失敗しました。従来の調整方法をお試しください。"
                 return {
                     "reply_md": reply_md,
-                    "estimates": ests,
-                    "totals": self._calc_totals(ests),
+                    "estimates": separated_ests,
+                    "totals": self._calc_totals(separated_ests),
                     "version": 2,
                 }
 
@@ -823,16 +967,34 @@ class ChatService:
                         ai_estimates = data.get("estimates") or []
                         if ai_estimates:
                             # 正規化
+                            # Create a map from current estimates to preserve reasoning_breakdown and reasoning_notes
+                            current_map = {
+                                (est.get('deliverable_name') or '').lower(): est
+                                for est in updated
+                            }
                             norm = []
                             for e in ai_estimates:
                                 pd = _num(e.get("person_days", 0.0), 0.0)
                                 amt = _num(e.get("amount", pd * settings.get_daily_unit_cost()), 0.0)
+                                # Preserve reasoning_breakdown and reasoning_notes from current estimate
+                                deliverable_name = e.get("deliverable_name")
+                                current_est = current_map.get((deliverable_name or '').lower())
+                                reasoning_breakdown = e.get("reasoning_breakdown") or (current_est.get("reasoning_breakdown") if current_est else None) or e.get("reasoning") or ""
+                                reasoning_notes = e.get("reasoning_notes") or (current_est.get("reasoning_notes") if current_est else None) or ""
+                                # Add AI adjustment note
+                                adjustment_note = "【調整】AI提案を適用"
+                                if reasoning_notes:
+                                    reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
+                                else:
+                                    reasoning_notes = adjustment_note
                                 norm.append({
-                                    "deliverable_name": e.get("deliverable_name"),
+                                    "deliverable_name": deliverable_name,
                                     "deliverable_description": e.get("deliverable_description"),
                                     "person_days": pd,
                                     "amount": amt,
                                     "reasoning": e.get("reasoning") or "",
+                                    "reasoning_breakdown": reasoning_breakdown,
+                                    "reasoning_notes": reasoning_notes,
                                 })
                             # AI案がルール適用結果と実質同じなら、ルール結果を保持
                             def _differs(a, b):
@@ -909,9 +1071,35 @@ class ChatService:
 
         suggestions = build_suggestions(updated if updated else ests)
 
+        # Auto-separate reasoning_breakdown and reasoning_notes for all estimates before returning
+        from app.utils.reasoning_separator import auto_separate_reasoning
+        final_estimates = []
+        for i, est in enumerate(updated):
+            # DEBUG: Print before auto-separation
+            print(f"[DEBUG process] Estimate {i}: {est.get('deliverable_name')}")
+            print(f"[DEBUG process]   Before auto_separate:")
+            print(f"[DEBUG process]     breakdown (first 100 chars): {(est.get('reasoning_breakdown') or '')[:100]}")
+            print(f"[DEBUG process]     notes (first 100 chars): {(est.get('reasoning_notes') or '')[:100]}")
+
+            breakdown, notes = auto_separate_reasoning(
+                est.get("reasoning_breakdown") or "",
+                est.get("reasoning_notes") or ""
+            )
+
+            # DEBUG: Print after auto-separation
+            print(f"[DEBUG process]   After auto_separate:")
+            print(f"[DEBUG process]     breakdown (first 100 chars): {breakdown[:100]}")
+            print(f"[DEBUG process]     notes (first 100 chars): {notes[:100]}")
+
+            final_estimates.append({
+                **est,
+                "reasoning_breakdown": breakdown,
+                "reasoning_notes": notes,
+            })
+
         return {
             "reply_md": reply_md,
-            "estimates": updated,
+            "estimates": final_estimates,
             "totals": totals,
             "version": 2,
             "suggestions": suggestions,

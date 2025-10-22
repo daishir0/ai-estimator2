@@ -21,6 +21,8 @@ class ChatEstimateItem(BaseModel):
     person_days: float
     amount: float
     reasoning: Optional[str]
+    reasoning_breakdown: Optional[str] = None
+    reasoning_notes: Optional[str] = None
 
 
 class ChatResponse(BaseModel):

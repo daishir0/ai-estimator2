@@ -23,6 +23,7 @@ from app.schemas.task import TaskResultResponse
 from app.schemas.qa_pair import QAPairRequest
 from app.services.task_service import TaskService
 from app.services.question_service import QuestionService
+from app.utils.reasoning_separator import auto_separate_reasoning
 from app.services.input_service import InputService
 from app.services.chat_service import ChatService
 from app.services.safety_service import SafetyService
@@ -251,18 +252,25 @@ async def get_task_result(task_id: str, db: Session = Depends(get_db)):
 
     # 見積り取得
     estimates = task_service.get_task_estimates(task_id)
-    estimate_items = [
-        EstimateResponse(
-            deliverable_name=est.deliverable_name,
-            deliverable_description=est.deliverable_description,
-            person_days=est.person_days,
-            amount=est.amount,
-            reasoning=est.reasoning,
-            reasoning_breakdown=est.reasoning_breakdown,
-            reasoning_notes=est.reasoning_notes,
+    estimate_items = []
+    for i, est in enumerate(estimates):
+        # Auto-separate reasoning_breakdown and reasoning_notes for existing data
+        breakdown, notes = auto_separate_reasoning(
+            est.reasoning_breakdown or "",
+            est.reasoning_notes or ""
         )
-        for est in estimates
-    ]
+
+        estimate_items.append(
+            EstimateResponse(
+                deliverable_name=est.deliverable_name,
+                deliverable_description=est.deliverable_description,
+                person_days=est.person_days,
+                amount=est.amount,
+                reasoning=est.reasoning,
+                reasoning_breakdown=breakdown,
+                reasoning_notes=notes,
+            )
+        )
 
     # 合計計算
     subtotal = sum(est.amount for est in estimate_items)
@@ -398,26 +406,31 @@ async def chat_adjust(task_id: str, req: ChatRequest, db: Session = Depends(get_
     result = svc.process(task_id, req.message, req.intent, req.params, provided_estimates=req.estimates)
     # 整形
     estimates = result.get("estimates") or []
-    resp_items = [
-        {
+    resp_items = []
+    for i, e in enumerate(estimates):
+        # Auto-separate reasoning_breakdown and reasoning_notes (same as /result endpoint)
+        breakdown, notes = auto_separate_reasoning(
+            e.get("reasoning_breakdown") or "",
+            e.get("reasoning_notes") or ""
+        )
+
+        resp_items.append({
             "deliverable_name": e["deliverable_name"],
             "deliverable_description": e.get("deliverable_description"),
             "person_days": float(e["person_days"]),
             "amount": float(e["amount"]),
             "reasoning": e.get("reasoning"),
-            "reasoning_breakdown": e.get("reasoning_breakdown"),
-            "reasoning_notes": e.get("reasoning_notes"),
-        }
-        for e in estimates
-    ]
+            "reasoning_breakdown": breakdown,
+            "reasoning_notes": notes,
+        })
 
-    # Save adjusted estimates to database
-    if estimates:
+    # Save adjusted estimates to database (use resp_items which has auto-separated data)
+    if resp_items:
         from app.models.estimate import Estimate
         # Delete old estimates
         db.query(Estimate).filter(Estimate.task_id == task_id).delete()
-        # Save new estimates
-        for e in estimates:
+        # Save new estimates (from resp_items, not estimates)
+        for i, e in enumerate(resp_items):
             estimate = Estimate(
                 id=str(uuid.uuid4()),
                 task_id=task_id,
@@ -426,8 +439,8 @@ async def chat_adjust(task_id: str, req: ChatRequest, db: Session = Depends(get_
                 person_days=float(e["person_days"]),
                 amount=float(e["amount"]),
                 reasoning=e.get("reasoning"),
-                reasoning_breakdown=e.get("reasoning_breakdown"),
-                reasoning_notes=e.get("reasoning_notes"),
+                reasoning_breakdown=e["reasoning_breakdown"],  # ← From resp_items (auto-separated)
+                reasoning_notes=e["reasoning_notes"],          # ← From resp_items (auto-separated)
             )
             db.add(estimate)
         db.commit()

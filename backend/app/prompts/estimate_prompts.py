@@ -33,15 +33,27 @@ def get_estimate_prompt(deliverable: dict, system_requirements: str, qa_text: st
   "reasoning_notes": "根拠・備考（Markdown可）。見積りの前提条件、リスク、補足説明など。"
 }}
 
-【reasoning_breakdown のフォーマット】
-以下の統一フォーマットで記載してください：
-{t('prompts.estimate_breakdown_format')}
+【重要】reasoning_breakdownとreasoning_notesは明確に分離すること！
+
+【reasoning_breakdown の記載内容】
+工程別の数値内訳のみを箇条書きで記載。説明文や前提条件は含めない。
+例：
+- 要件定義: 5.0{unit}
+- 設計: 3.0{unit}
+- 実装: 4.0{unit}
+- テスト: 2.0{unit}
+- ドキュメント作成: 1.0{unit}
+
+【reasoning_notes の記載内容】
+見積りの前提条件、リスク、補足説明を記載。工程別の数値内訳は含めない。
+例：
+本見積もりはECシステムの要件定義書作成に基づいています。要件定義にはシステム全体の要件を整理するための時間が必要です。設計は比較的シンプルであり、実装も潤沢な人員がいるため、工数を抑えています。テストは基本的な機能確認を行うための時間を見込んでいます。リスクとしては、要件の変更や追加が発生する可能性があるため、柔軟に対応できる体制が必要です。
 
 【見積り範囲】
 - 設計・実装・テスト・ドキュメント作成を含める
 - 成果物の複雑さを考慮した現実的な工数
-- reasoning_breakdownには工程別の数値内訳を統一フォーマットで記載
-- reasoning_notesには前提条件やリスク、注意点を記載
+- reasoning_breakdownには工程別の数値内訳のみを統一フォーマットで記載（説明文は含めない）
+- reasoning_notesには前提条件、リスク、注意点、補足説明を記載（数値内訳は含めない）
 """
 
 

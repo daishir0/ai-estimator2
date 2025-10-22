@@ -13,6 +13,7 @@ from app.services.retry_service import retry_with_exponential_backoff
 from app.services.circuit_breaker import openai_circuit_breaker
 from app.core.logging_config import get_logger
 from app.core.metrics import metrics_collector
+from app.utils.reasoning_separator import auto_separate_reasoning
 
 logger = get_logger(__name__)
 
@@ -220,6 +221,13 @@ class EstimatorService:
                 person_days = float(result.get('person_days', 5.0))
                 reasoning_breakdown = result.get('reasoning_breakdown', '')
                 reasoning_notes = result.get('reasoning_notes', '')
+
+                # Auto-separation: If reasoning_notes is empty but reasoning_breakdown contains paragraphs,
+                # split them into breakdown (bulleted lists) and notes (paragraphs)
+                reasoning_breakdown, reasoning_notes = auto_separate_reasoning(
+                    reasoning_breakdown, reasoning_notes
+                )
+
                 # Backward compatibility: keep reasoning field
                 reasoning = result.get('reasoning', f"{reasoning_breakdown}\n\n{reasoning_notes}")
             else:
