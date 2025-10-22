@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background -->
+  <rect x="10" y="10" width="80" height="80" rx="8" fill="#3b82f6" stroke="#1e40af" stroke-width="2"/>
+
+  <!-- Display screen -->
+  <rect x="18" y="18" width="64" height="20" rx="3" fill="#e0f2fe" stroke="#1e40af" stroke-width="1"/>
+
+  <!-- Buttons (3x4 grid) -->
+  <!-- Row 1 -->
+  <rect x="18" y="45" width="16" height="10" rx="2" fill="#60a5fa"/>
+  <rect x="38" y="45" width="16" height="10" rx="2" fill="#60a5fa"/>
+  <rect x="58" y="45" width="16" height="10" rx="2" fill="#60a5fa"/>
+
+  <!-- Row 2 -->
+  <rect x="18" y="58" width="16" height="10" rx="2" fill="#60a5fa"/>
+  <rect x="38" y="58" width="16" height="10" rx="2" fill="#60a5fa"/>
+  <rect x="58" y="58" width="16" height="10" rx="2" fill="#60a5fa"/>
+
+  <!-- Row 3 -->
+  <rect x="18" y="71" width="16" height="10" rx="2" fill="#60a5fa"/>
+  <rect x="38" y="71" width="16" height="10" rx="2" fill="#60a5fa"/>
+  <rect x="58" y="71" width="16" height="10" rx="2" fill="#60a5fa"/>
+
+  <!-- Equal button (highlighted) -->
+  <rect x="78" y="45" width="10" height="36" rx="2" fill="#fbbf24"/>
+</svg>
