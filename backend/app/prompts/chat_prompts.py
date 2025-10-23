@@ -14,48 +14,71 @@ def get_chat_system_prompt() -> str:
 def get_proposal_generation_prompt(user_message: str, estimates: list, totals: dict) -> str:
     """提案生成プロンプトを生成（安全ガイドライン・言語指示付き）"""
     unit = t('prompts.estimate_unit')
+    currency = t('prompts.currency_symbol')
     base_prompt = t('prompts.chat_system')
     safety_guidelines = get_safety_guidelines()
     language_instruction = t('prompts.chat_language_instruction')
 
+    # 見積りリスト（多言語対応）
     estimates_text = "\n".join([
-        f"- {e['deliverable_name']}: {e['person_days']}{unit} ({e['amount']:,}円)"
+        f"- {e['deliverable_name']}: {e['person_days']}{unit} ({e['amount']:,}{currency})"
         for e in estimates
     ])
+
+    # プロンプトテキスト（多言語対応）
+    proposal_instruction = t('prompts.chat_proposal_instruction')
+    current_estimate_label = t('prompts.chat_current_estimate')
+    subtotal_label = t('prompts.chat_subtotal')
+    before_tax_label = t('prompts.chat_before_tax')
+    user_request_label = t('prompts.chat_user_request')
+    instructions_title = t('prompts.chat_instructions_title')
+    instruction_1 = t('prompts.chat_instruction_1')
+    instruction_2 = t('prompts.chat_instruction_2')
+    instruction_3 = t('prompts.chat_instruction_3')
+    output_format_title = t('prompts.chat_output_format_title')
+    output_format_description = t('prompts.chat_output_format_description')
+
+    # JSON例の翻訳
+    json_proposal_title = t('prompts.chat_json_proposal_title')
+    json_proposal_description = t('prompts.chat_json_proposal_description')
+    json_target_amount_change = t('prompts.chat_json_target_amount_change')
+    json_deliverable_name = t('prompts.chat_json_deliverable_name')
+    json_person_days_change = t('prompts.chat_json_person_days_change')
+    json_reason = t('prompts.chat_json_reason')
 
     return f"""
 {base_prompt}
 {safety_guidelines}
 {language_instruction}
 
-ユーザーの要望に基づいて、見積りの調整案を3つ提案してください。
+{proposal_instruction}
 
-【現在の見積り】
+【{current_estimate_label}】
 {estimates_text}
 
-合計: {totals.get('subtotal', 0):,}円（税抜）
+{subtotal_label}: {totals.get('subtotal', 0):,}{currency}（{before_tax_label}）
 
-【ユーザーの要望】
+【{user_request_label}】
 {user_message}
 
-【指示】
-1. ユーザーの要望を満たす具体的な調整案を3つ提案してください
-2. 各提案には、タイトル、説明、具体的な変更内容を含めてください
-3. 現実的で実行可能な提案にしてください
+【{instructions_title}】
+{instruction_1}
+{instruction_2}
+{instruction_3}
 
-【出力形式】
-以下のJSON形式で返してください：
+【{output_format_title}】
+{output_format_description}
 {{
   "proposals": [
     {{
-      "title": "提案1のタイトル",
-      "description": "提案1の説明",
-      "target_amount_change": 目標金額変更（負の値で減額）,
+      "title": "{json_proposal_title}",
+      "description": "{json_proposal_description}",
+      "target_amount_change": {json_target_amount_change},
       "changes": [
         {{
-          "deliverable_name": "成果物名",
-          "person_days_change": 工数変更（負の値で削減）,
-          "reason": "変更理由"
+          "deliverable_name": "{json_deliverable_name}",
+          "person_days_change": {json_person_days_change},
+          "reason": "{json_reason}"
         }}
       ]
     }}

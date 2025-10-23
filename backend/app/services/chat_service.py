@@ -174,11 +174,15 @@ class ChatService:
         return out, note
 
     # --- 自由入力の意図解析と適用（ルールベース） ---
-    def _analyze_and_apply(self, estimates: List[Dict[str, Any]], message: str) -> Tuple[List[Dict[str, Any]], str, bool]:
+    def _analyze_and_apply(self, estimates: List[Dict[str, Any]], message: str) -> Tuple[List[Dict[str, Any]], str, bool, List[str]]:
         m = (message or "").lower()
         targets: list[str] = []
         # 全体適用フラグ（「全体」「合計」「すべて」などの語彙を検出）
-        apply_to_all = any(x in m for x in ['全体', '合計', '全部', 'すべて', '全て', 'トータル', '総額', '総計', '全項目', '全成果物'])
+        # English keywords: 'all', 'total', 'overall', 'entire', 'everything'
+        apply_to_all = any(x in m for x in [
+            '全体', '合計', '全部', 'すべて', '全て', 'トータル', '総額', '総計', '全項目', '全成果物',
+            'all', 'total', 'overall', 'entire', 'everything', 'whole'
+        ])
 
         # ターゲット辞書（大幅に拡張）
         mapping = {
@@ -215,10 +219,16 @@ class ChatService:
                     reduce_ratio = max(0.1, 1.0 - (p/100.0))
             except Exception:
                 pass
-        # 言い回しに応じた既定比率（語彙を大幅に拡張）
-        if reduce_ratio is None and any(x in m for x in ['簡便', '簡易', '簡単', 'シンプル', 'ライト', '軽量', 'ミニマム', '最小限', '必要最小']):
+        # 言い回しに応じた既定比率（語彙を大幅に拡張 + English keywords）
+        if reduce_ratio is None and any(x in m for x in [
+            '簡便', '簡易', '簡単', 'シンプル', 'ライト', '軽量', 'ミニマム', '最小限', '必要最小',
+            'simple', 'simpler', 'simplified', 'light', 'lightweight', 'minimal', 'minimum', 'basic'
+        ]):
             reduce_ratio = 0.7  # 30%削減
-        if reduce_ratio is None and any(x in m for x in ['安く', '安価', 'コストダウン', '費用抑', 'コスト削減', 'コストカット', '予算削減', '節約', 'もう少し安', '少し安', '価格を下げ', '値下げ']):
+        if reduce_ratio is None and any(x in m for x in [
+            '安く', '安価', 'コストダウン', '費用抑', 'コスト削減', 'コストカット', '予算削減', '節約', 'もう少し安', '少し安', '価格を下げ', '値下げ',
+            'affordable', 'cheaper', 'cheap', 'cost down', 'reduce cost', 'cut cost', 'lower cost', 'save money', 'budget friendly', 'economical'
+        ]):
             reduce_ratio = 0.8  # 20%削減
         if reduce_ratio is None and any(x in m for x in ['大幅', 'かなり', 'もっと下げ', '大きく下げ', '大きく削減', '大胆', '思い切']):
             reduce_ratio = 0.6  # 40%削減
@@ -315,7 +325,7 @@ class ChatService:
                     # Preserve reasoning_breakdown and reasoning_notes
                     reasoning_breakdown = e.get('reasoning_breakdown') or e.get('reasoning') or ''
                     reasoning_notes = e.get('reasoning_notes') or ''
-                    adjustment_note = "【調整】デフォルト削減率15%を適用"
+                    adjustment_note = t('messages.adjustment_note_default_reduction')
                     if reasoning_notes:
                         reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
                     else:
@@ -330,14 +340,18 @@ class ChatService:
                 else:
                     tmp.append(e)
             new_ests = tmp
-            lines = ['調整対象（強度自動推定: 15%削減）:']
+            unit = t('prompts.estimate_unit')
+            currency = t('prompts.currency_symbol')
+            lines = [t('messages.adjustment_targets_auto')]
             for n, bpd, apd, bam, aam in changed:
-                lines.append(f'- {n}: {bpd:.1f}人日/{bam:,}円 → {apd:.1f}人日/{aam:,}円')
+                lines.append(f'- {n}: {bpd:.1f}{unit}/{bam:,}{currency} → {apd:.1f}{unit}/{aam:,}{currency}')
             note = '\n'.join(lines)
         else:
-            lines = ['調整対象:']
+            unit = t('prompts.estimate_unit')
+            currency = t('prompts.currency_symbol')
+            lines = [t('messages.adjustment_targets')]
             for n, bpd, apd, bam, aam in changed:
-                lines.append(f'- {n}: {bpd:.1f}人日/{bam:,}円 → {apd:.1f}人日/{aam:,}円')
+                lines.append(f'- {n}: {bpd:.1f}{unit}/{bam:,}{currency} → {apd:.1f}{unit}/{aam:,}{currency}')
             note = '\n'.join(lines)
 
         try:
@@ -346,7 +360,15 @@ class ChatService:
             pass
 
         has_changes = len(changed) > 0
-        return new_ests, note, has_changes
+        # Extract changed item names (first element of each tuple in changed list)
+        changed_item_names = [item[0] for item in changed]
+
+        try:
+            print(f"[RB] changed_item_names={changed_item_names}")
+        except Exception:
+            pass
+
+        return new_ests, note, has_changes, changed_item_names
 
     # --- 金額調整検出（2ステップフロー用） ---
     def _detect_adjustment_request(self, message: str) -> Dict[str, Any] | None:
@@ -938,33 +960,80 @@ class ChatService:
             updated, note = self._scope_reduce(updated, keywords)
         else:
             # 自由入力: まずはルールで適用 → さらにAI案が取れれば上書き
-            updated, rule_note, has_rule_changes = self._analyze_and_apply(updated, message or "")
+            updated, rule_note, has_rule_changes, changed_item_names = self._analyze_and_apply(updated, message or "")
             note = rule_note
+            # AI調整前の状態を保存（例外発生時に復元するため）
+            updated_before_ai = [dict(e) for e in updated]
+            ai_adjusted = False  # AI調整が成功したかどうかのフラグ
             if _OPENAI_AVAILABLE and getattr(settings, 'OPENAI_API_KEY', None):
                 try:
                     # 言語指示を取得
                     language_instruction = t('prompts.chat_language_instruction')
+
+                    # Build list of items adjusted by rule-based processing
+                    rule_adjusted_items_text = ""
+                    if changed_item_names:
+                        rule_adjusted_items_text = f"\n\n**Items adjusted by rule-based processing**: {', '.join(changed_item_names)}\n"
+
                     # daily unit cost は設定値を伝え、金額整合を要求
                     prompt = {
                         "role": "user",
                         "content": (
                             f"{language_instruction}\n\n"
-                            "以下は現在の見積です。各項目の人日(person_days)と金額(amount)を単価"
+                            "**IMPORTANT INSTRUCTION**: Only adjust the items specifically mentioned in the user's request below. "
+                            "Do not modify other items unless explicitly requested by the user.\n"
+                            f"{rule_adjusted_items_text}"
+                            "以下は現在の見積です。指定された項目のみの人日(person_days)と金額(amount)を単価"
                             f"{settings.get_daily_unit_cost()}{t('ui.unit_yen')}/人日で整合がとれるように調整し、依頼文に沿って改善案を出してください。\n"
                             "JSONのみ、コードブロックなしで返してください。フィールドは reply_md, estimates(配列), totals のみ。\n"
                             "estimates の各要素は {deliverable_name, deliverable_description, person_days(小数1桁), amount(数値), reasoning(短いMarkdown可)} とします。\n"
-                            f"totals は {{subtotal, tax, total}}（税率{settings.get_tax_rate()*100:.0f}%）です。\n"
+                            f"totals は {{subtotal, tax, total}}（税率{settings.get_tax_rate()*100:.0f}%）です。\n\n"
                             "依頼文:\n" + (message or "") + "\n\n"
                             "現在の見積(JSON):\n" + json.dumps(updated, ensure_ascii=False)
                         ),
                     }
 
+                    # Debug: Print AI prompt
+                    try:
+                        print(f"[AI] Sending prompt to LLM (first 500 chars):")
+                        print(f"[AI] {prompt['content'][:500]}")
+                        print(f"[AI] Rule-adjusted items: {changed_item_names}")
+                    except Exception:
+                        pass
+
                     # Call LLM with retry
                     content = self._call_adjustment_llm_with_retry(prompt)
+
+                    # Debug: Print AI response
+                    try:
+                        print(f"[AI] Received response (first 500 chars):")
+                        print(f"[AI] {content[:500]}")
+                    except Exception:
+                        pass
+
                     m = re.search(r"\{.*\}\s*$", content, re.DOTALL)
                     if m:
                         data = json.loads(m.group(0))
                         ai_estimates = data.get("estimates") or []
+
+                        # Debug: Count changed items in AI response
+                        try:
+                            ai_changed_count = 0
+                            for ai_est in ai_estimates:
+                                ai_name = (ai_est.get("deliverable_name") or "").lower()
+                                for orig_est in updated_before_ai:
+                                    orig_name = (orig_est.get("deliverable_name") or "").lower()
+                                    if ai_name == orig_name:
+                                        ai_pd = float(ai_est.get("person_days", 0.0))
+                                        orig_pd = float(orig_est.get("person_days", 0.0))
+                                        if abs(ai_pd - orig_pd) >= 0.05:
+                                            ai_changed_count += 1
+                                        break
+                            print(f"[AI] AI changed {ai_changed_count} items")
+                            print(f"[AI] Rule-based changed {len(changed_item_names)} items")
+                        except Exception as e:
+                            print(f"[AI] Failed to count changed items: {e}")
+                            pass
                         if ai_estimates:
                             # 正規化
                             # Create a map from current estimates to preserve reasoning_breakdown and reasoning_notes
@@ -1012,12 +1081,22 @@ class ChatService:
                                         return True
                                 return False
                             if _differs(norm, updated):
+                                # Debug: Log AI adoption decision
+                                try:
+                                    print(f"[AI] AI adoption decision:")
+                                    print(f"[AI]   has_rule_changes={has_rule_changes}")
+                                    print(f"[AI]   ai_changed_count={ai_changed_count if 'ai_changed_count' in locals() else 'unknown'}")
+                                    print(f"[AI]   rule_changed_count={len(changed_item_names)}")
+                                except Exception:
+                                    pass
+
                                 # ルールベースで変更がない場合はAI案を無条件で採用
                                 # ルールベースで変更がある場合は、AI案の総額が下がる場合のみ採用
                                 if not has_rule_changes:
                                     updated = norm
+                                    ai_adjusted = True  # AI調整成功フラグ
                                     try:
-                                        print(f"[RB] AI案を採用（ルールベースで変更なし）")
+                                        print(f"[AI] ✓ AI proposal ADOPTED (no rule-based changes)")
                                     except Exception:
                                         pass
                                 else:
@@ -1025,21 +1104,31 @@ class ChatService:
                                     rb_tot = self._calc_totals(updated).get('total', 0.0)
                                     if ai_tot < rb_tot - 1e-3:
                                         updated = norm
+                                        ai_adjusted = True  # AI調整成功フラグ
                                         try:
-                                            print(f"[RB] AI案を採用（総額改善: {int(rb_tot):,}円 → {int(ai_tot):,}円）")
+                                            print(f"[AI] ✓ AI proposal ADOPTED (total cost improved: ¥{int(rb_tot):,} → ¥{int(ai_tot):,})")
                                         except Exception:
                                             pass
                                     else:
                                         try:
-                                            print(f"[RB] ルール案を保持（AI案は総額改善なし: {int(rb_tot):,}円 vs {int(ai_tot):,}円）")
+                                            print(f"[AI] ✗ AI proposal REJECTED (no total cost improvement: ¥{int(rb_tot):,} vs ¥{int(ai_tot):,})")
                                         except Exception:
                                             pass
                         ai_note = (data.get("reply_md") or "AIからの提案を反映しました。")
-                        note = (rule_note + "\n\n" + ai_note).strip()
+                        # AI調整が成功した場合、rule_noteの数値は古くなるので使わない
+                        if ai_adjusted:
+                            note = ai_note  # AI調整のメッセージのみ使用
+                        else:
+                            note = (rule_note + "\n\n" + ai_note).strip()  # 両方を結合
                 except Exception as e:
-                    # 失敗時は従来のメッセージのみ
-                    if not note:
-                        note = "（AI提案の取得に失敗したため、見積値は変更していません）"
+                    # 失敗時はAI調整前の状態に復元
+                    updated = updated_before_ai
+                    # 例外ログを記録
+                    try:
+                        print(f"[ChatService] AI調整で例外発生: {str(e)}")
+                    except:
+                        pass
+                    # note は rule_note のままでOK（AI調整を行わなかった状態）
             else:
                 if not note:
                     note = "（AI提案は無効化されているため、見積値は変更していません）"
@@ -1066,7 +1155,7 @@ class ChatService:
                 sugs.append({ 'label': t('messages.suggestion_exclude').format(name=nm), 'payload': { 'message': t('messages.suggestion_message_exclude').format(name=nm) } })
             sugs.append({ 'label': t('messages.suggestion_reduce_all_5'), 'payload': { 'message': t('messages.suggestion_message_reduce_all_5') } })
             sugs.append({ 'label': t('messages.suggestion_unit_cost_40k'), 'payload': { 'intent': 'unit_cost_change', 'params': { 'unit_cost': 40000 } } })
-            sugs.append({ 'label': t('messages.suggestion_fit_budget_1.2m'), 'payload': { 'intent': 'fit_budget', 'params': { 'cap': 1200000 } } })
+            sugs.append({ 'label': t('messages.suggestion_fit_budget_1_2m'), 'payload': { 'intent': 'fit_budget', 'params': { 'cap': 1200000 } } })
             return sugs
 
         suggestions = build_suggestions(updated if updated else ests)
