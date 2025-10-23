@@ -1124,5 +1124,85 @@ Admin Dashboard: word_match=True ('admin' in {'admin', 'dashboard'}) → match=T
 - AIには"Admin Dashboard"のみが変更項目として伝達される
 - AIも"Admin Dashboard"のみを調整する
 
+### 2025-10-23 19:00 - 最終修正: AI項目数検証 + CRITICAL INSTRUCTION追加
+**問題**: 単語境界マッチング実装後も、Admin Dashboardの1項目のみが残り、他12項目が消失
+
+**根本原因**: AIが「指定項目のみ調整」を「指定項目のみ返す」と誤解釈
+
+**修正内容**:
+
+#### 修正1: AI項目数検証の追加
+**ファイル**: `backend/app/services/chat_service.py:1059-1065`
+
+**追加コード**:
+```python
+if ai_estimates:
+    # Validate: AI must return the same number of items
+    if len(ai_estimates) != len(updated):
+        print(f"[AI] ✗ AI response REJECTED: Item count mismatch (AI returned {len(ai_estimates)} items, expected {len(updated)} items)")
+        # Do not adopt AI proposal, keep rule-based result
+    else:
+        # 正規化処理（normの作成）
+```
+
+**効果**: AIが一部項目のみを返した場合、自動的に却下される
+
+#### 修正2: CRITICAL INSTRUCTION追加（プロンプト改善）
+**ファイル**: `backend/app/services/chat_service.py:994-1006`
+
+**変更前**:
+```python
+"**IMPORTANT INSTRUCTION**: Only adjust the items specifically mentioned in the user's request below. "
+"Do not modify other items unless explicitly requested by the user.\n"
+```
+
+**変更後**:
+```python
+total_items_count = len(updated)
+
+"**CRITICAL INSTRUCTION**:\n"
+f"1. You MUST return ALL {total_items_count} items in the estimates array.\n"
+"2. Only adjust the values (person_days, amount) for items specifically mentioned in the user's request below.\n"
+"3. For items NOT mentioned in the request, keep their original values UNCHANGED.\n"
+"4. Do NOT remove, exclude, or omit any items from the estimates array.\n"
+```
+
+**改善点**:
+1. **番号付きリストで明確化**
+2. **"You MUST return ALL X items"** - 項目数を明示
+3. **"adjust the values"** - 値の調整であることを明示
+4. **"keep their original values UNCHANGED"** - 変更しない項目もそのまま返すことを明示
+5. **"Do NOT remove, exclude, or omit"** - 除外しないことを明示
+
+#### 期待される動作
+
+**テストケース**: "Please make the admin dashboard simple and affordable."
+
+**AIプロンプト送信**:
+```
+**CRITICAL INSTRUCTION**:
+1. You MUST return ALL 13 items in the estimates array.
+2. Only adjust the values (person_days, amount) for items specifically mentioned in the user's request below.
+3. For items NOT mentioned in the request, keep their original values UNCHANGED.
+4. Do NOT remove, exclude, or omit any items from the estimates array.
+
+**Items adjusted by rule-based processing**: Admin Dashboard
+
+依頼文:
+Please make the admin dashboard simple and affordable.
+
+現在の見積(JSON):
+[... 13項目 ...]
+```
+
+**AIレスポンス検証**:
+- AIが13項目を返す → ✓ 検証OK、採用判定へ
+- AIが1項目のみ返す → ✗ 却下、ルールベース結果を保持
+
+**最終結果**:
+- ✅ 13項目すべてが表示される
+- ✅ Admin Dashboardのみが調整される（ルールベース: 30%削減）
+- ✅ 他の12項目は元の値のまま
+
 ### 次のアクション
-サービス再起動して動作確認を実施する
+コミット・再起動して動作確認を実施する

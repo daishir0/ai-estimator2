@@ -991,12 +991,18 @@ class ChatService:
                         rule_adjusted_items_text = f"\n\n**Items adjusted by rule-based processing**: {', '.join(changed_item_names)}\n"
 
                     # daily unit cost は設定値を伝え、金額整合を要求
+                    # Count total items to inform AI
+                    total_items_count = len(updated)
+
                     prompt = {
                         "role": "user",
                         "content": (
                             f"{language_instruction}\n\n"
-                            "**IMPORTANT INSTRUCTION**: Only adjust the items specifically mentioned in the user's request below. "
-                            "Do not modify other items unless explicitly requested by the user.\n"
+                            "**CRITICAL INSTRUCTION**:\n"
+                            f"1. You MUST return ALL {total_items_count} items in the estimates array.\n"
+                            "2. Only adjust the values (person_days, amount) for items specifically mentioned in the user's request below.\n"
+                            "3. For items NOT mentioned in the request, keep their original values UNCHANGED.\n"
+                            "4. Do NOT remove, exclude, or omit any items from the estimates array.\n"
                             f"{rule_adjusted_items_text}"
                             "以下は現在の見積です。指定された項目のみの人日(person_days)と金額(amount)を単価"
                             f"{settings.get_daily_unit_cost()}{t('ui.unit_yen')}/人日で整合がとれるように調整し、依頼文に沿って改善案を出してください。\n"
@@ -1050,85 +1056,93 @@ class ChatService:
                             print(f"[AI] Failed to count changed items: {e}")
                             pass
                         if ai_estimates:
-                            # 正規化
-                            # Create a map from current estimates to preserve reasoning_breakdown and reasoning_notes
-                            current_map = {
-                                (est.get('deliverable_name') or '').lower(): est
-                                for est in updated
-                            }
-                            norm = []
-                            for e in ai_estimates:
-                                pd = _num(e.get("person_days", 0.0), 0.0)
-                                amt = _num(e.get("amount", pd * settings.get_daily_unit_cost()), 0.0)
-                                # Preserve reasoning_breakdown and reasoning_notes from current estimate
-                                deliverable_name = e.get("deliverable_name")
-                                current_est = current_map.get((deliverable_name or '').lower())
-                                reasoning_breakdown = e.get("reasoning_breakdown") or (current_est.get("reasoning_breakdown") if current_est else None) or e.get("reasoning") or ""
-                                reasoning_notes = e.get("reasoning_notes") or (current_est.get("reasoning_notes") if current_est else None) or ""
-                                # Add AI adjustment note
-                                adjustment_note = "【調整】AI提案を適用"
-                                if reasoning_notes:
-                                    reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
-                                else:
-                                    reasoning_notes = adjustment_note
-                                norm.append({
-                                    "deliverable_name": deliverable_name,
-                                    "deliverable_description": e.get("deliverable_description"),
-                                    "person_days": pd,
-                                    "amount": amt,
-                                    "reasoning": e.get("reasoning") or "",
-                                    "reasoning_breakdown": reasoning_breakdown,
-                                    "reasoning_notes": reasoning_notes,
-                                })
-                            # AI案がルール適用結果と実質同じなら、ルール結果を保持
-                            def _differs(a, b):
-                                if len(a) != len(b):
-                                    return True
-                                amap = { (x.get('deliverable_name') or '').lower(): x for x in a }
-                                for y in b:
-                                    k = (y.get('deliverable_name') or '').lower()
-                                    x = amap.get(k)
-                                    if not x:
-                                        return True
-                                    if abs(float(x.get('person_days',0.0)) - float(y.get('person_days',0.0))) >= 0.05:
-                                        return True
-                                    if abs(float(x.get('amount',0.0)) - float(y.get('amount',0.0))) >= 0.5:
-                                        return True
-                                return False
-                            if _differs(norm, updated):
-                                # Debug: Log AI adoption decision
+                            # Validate: AI must return the same number of items
+                            if len(ai_estimates) != len(updated):
                                 try:
-                                    print(f"[AI] AI adoption decision:")
-                                    print(f"[AI]   has_rule_changes={has_rule_changes}")
-                                    print(f"[AI]   ai_changed_count={ai_changed_count if 'ai_changed_count' in locals() else 'unknown'}")
-                                    print(f"[AI]   rule_changed_count={len(changed_item_names)}")
+                                    print(f"[AI] ✗ AI response REJECTED: Item count mismatch (AI returned {len(ai_estimates)} items, expected {len(updated)} items)")
                                 except Exception:
                                     pass
-
-                                # ルールベースで変更がない場合はAI案を無条件で採用
-                                # ルールベースで変更がある場合は、AI案の総額が下がる場合のみ採用
-                                if not has_rule_changes:
-                                    updated = norm
-                                    ai_adjusted = True  # AI調整成功フラグ
+                                # Do not adopt AI proposal, keep rule-based result
+                            else:
+                                # 正規化
+                                # Create a map from current estimates to preserve reasoning_breakdown and reasoning_notes
+                                current_map = {
+                                    (est.get('deliverable_name') or '').lower(): est
+                                    for est in updated
+                                }
+                                norm = []
+                                for e in ai_estimates:
+                                    pd = _num(e.get("person_days", 0.0), 0.0)
+                                    amt = _num(e.get("amount", pd * settings.get_daily_unit_cost()), 0.0)
+                                    # Preserve reasoning_breakdown and reasoning_notes from current estimate
+                                    deliverable_name = e.get("deliverable_name")
+                                    current_est = current_map.get((deliverable_name or '').lower())
+                                    reasoning_breakdown = e.get("reasoning_breakdown") or (current_est.get("reasoning_breakdown") if current_est else None) or e.get("reasoning") or ""
+                                    reasoning_notes = e.get("reasoning_notes") or (current_est.get("reasoning_notes") if current_est else None) or ""
+                                    # Add AI adjustment note
+                                    adjustment_note = "【調整】AI提案を適用"
+                                    if reasoning_notes:
+                                        reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
+                                    else:
+                                        reasoning_notes = adjustment_note
+                                    norm.append({
+                                        "deliverable_name": deliverable_name,
+                                        "deliverable_description": e.get("deliverable_description"),
+                                        "person_days": pd,
+                                        "amount": amt,
+                                        "reasoning": e.get("reasoning") or "",
+                                        "reasoning_breakdown": reasoning_breakdown,
+                                        "reasoning_notes": reasoning_notes,
+                                    })
+                                # AI案がルール適用結果と実質同じなら、ルール結果を保持
+                                def _differs(a, b):
+                                    if len(a) != len(b):
+                                        return True
+                                    amap = { (x.get('deliverable_name') or '').lower(): x for x in a }
+                                    for y in b:
+                                        k = (y.get('deliverable_name') or '').lower()
+                                        x = amap.get(k)
+                                        if not x:
+                                            return True
+                                        if abs(float(x.get('person_days',0.0)) - float(y.get('person_days',0.0))) >= 0.05:
+                                            return True
+                                        if abs(float(x.get('amount',0.0)) - float(y.get('amount',0.0))) >= 0.5:
+                                            return True
+                                    return False
+                                if _differs(norm, updated):
+                                    # Debug: Log AI adoption decision
                                     try:
-                                        print(f"[AI] ✓ AI proposal ADOPTED (no rule-based changes)")
+                                        print(f"[AI] AI adoption decision:")
+                                        print(f"[AI]   has_rule_changes={has_rule_changes}")
+                                        print(f"[AI]   ai_changed_count={ai_changed_count if 'ai_changed_count' in locals() else 'unknown'}")
+                                        print(f"[AI]   rule_changed_count={len(changed_item_names)}")
                                     except Exception:
                                         pass
-                                else:
-                                    ai_tot = self._calc_totals(norm).get('total', 0.0)
-                                    rb_tot = self._calc_totals(updated).get('total', 0.0)
-                                    if ai_tot < rb_tot - 1e-3:
+
+                                    # ルールベースで変更がない場合はAI案を無条件で採用
+                                    # ルールベースで変更がある場合は、AI案の総額が下がる場合のみ採用
+                                    if not has_rule_changes:
                                         updated = norm
                                         ai_adjusted = True  # AI調整成功フラグ
                                         try:
-                                            print(f"[AI] ✓ AI proposal ADOPTED (total cost improved: ¥{int(rb_tot):,} → ¥{int(ai_tot):,})")
+                                            print(f"[AI] ✓ AI proposal ADOPTED (no rule-based changes)")
                                         except Exception:
                                             pass
                                     else:
-                                        try:
-                                            print(f"[AI] ✗ AI proposal REJECTED (no total cost improvement: ¥{int(rb_tot):,} vs ¥{int(ai_tot):,})")
-                                        except Exception:
-                                            pass
+                                        ai_tot = self._calc_totals(norm).get('total', 0.0)
+                                        rb_tot = self._calc_totals(updated).get('total', 0.0)
+                                        if ai_tot < rb_tot - 1e-3:
+                                            updated = norm
+                                            ai_adjusted = True  # AI調整成功フラグ
+                                            try:
+                                                print(f"[AI] ✓ AI proposal ADOPTED (total cost improved: ¥{int(rb_tot):,} → ¥{int(ai_tot):,})")
+                                            except Exception:
+                                                pass
+                                        else:
+                                            try:
+                                                print(f"[AI] ✗ AI proposal REJECTED (no total cost improvement: ¥{int(rb_tot):,} vs ¥{int(ai_tot):,})")
+                                            except Exception:
+                                                pass
                         ai_note = (data.get("reply_md") or "AIからの提案を反映しました。")
                         # AI調整が成功した場合、rule_noteの数値は古くなるので使わない
                         if ai_adjusted:
