@@ -250,8 +250,18 @@ class ChatService:
         new_ests = []
         for e in estimates:
             name = (e.get('deliverable_name') or e.get('name') or '').lower()
+
+            # Word-boundary matching to avoid false matches (e.g., 'ui' in 'requirements')
+            # Priority 1: Exact word match (split by spaces)
+            name_words = set(name.split())
+            word_match = any(t in name_words for t in targets) if targets else False
+
+            # Priority 2: Substring match for keywords >= 4 chars
+            # (fallback for partial words like 'admin' in 'administrator', '管理' in '管理画面')
+            substring_match = any(t in name for t in targets if len(t) >= 4) if targets and not word_match else False
+
             # 全体適用フラグがtrueの場合、または個別ターゲットにマッチする場合
-            match = apply_to_all or (any(t in name for t in targets) if targets else False)
+            match = apply_to_all or word_match or substring_match
             before_pd = float(e.get('person_days', 0.0))
             before_amt = float(e.get('amount', 0.0))
             pd = before_pd
@@ -272,7 +282,8 @@ class ChatService:
                 if did_change:
                     changed.append((e.get('deliverable_name') or e.get('name'), before_pd, pd, int(before_amt), int(amt)))
                 try:
-                    print(f"[RB] item match name='{e.get('deliverable_name') or e.get('name')}' before={before_pd}/{int(before_amt)} after={pd}/{int(amt)} changed={did_change}")
+                    match_type = "word" if word_match else ("substring" if substring_match else "none")
+                    print(f"[RB] item match name='{e.get('deliverable_name') or e.get('name')}' match_type={match_type} before={before_pd}/{int(before_amt)} after={pd}/{int(amt)} changed={did_change}")
                 except Exception:
                     pass
             # push
@@ -318,7 +329,11 @@ class ChatService:
             tmp = []
             for e in new_ests:
                 nm = (e.get('deliverable_name') or '').lower()
-                if any(t in nm for t in targets):
+                # Use same word-boundary matching logic
+                nm_words = set(nm.split())
+                nm_word_match = any(t in nm_words for t in targets)
+                nm_substring_match = any(t in nm for t in targets if len(t) >= 4) if not nm_word_match else False
+                if nm_word_match or nm_substring_match:
                     pd = round(float(e['person_days']) * factor, 1)
                     amt = pd * settings.get_daily_unit_cost()
                     changed.append((e.get('deliverable_name') or e.get('name'), float(e['person_days']), pd, int(float(e['amount'])), int(amt)))

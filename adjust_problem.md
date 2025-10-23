@@ -1026,5 +1026,103 @@ updated, rule_note, has_rule_changes, changed_item_names = self._analyze_and_app
 - "Please make the admin dashboard simple and affordable." で動作確認
 - ログ出力を確認して効果を検証
 
+### 2025-10-23 18:40 - 緊急修正: 単語境界マッチング実装
+**問題**: "Please make the admin dashboard simple and affordable." を実行したところ、Requirements DocumentとAdmin Dashboardの2項目のみが残り、他11項目が消失
+
+**根本原因**: 'ui'キーワードが'req**ui**rements'に部分一致してしまった
+```
+targets = ['管理', '管理画面', 'admin', 'フロント', 'ui', '画面', 'ダッシュボード']
+'ui' in 'requirements document' → True（'req**ui**rements'）
+```
+
+**ユーザー指摘**: 英単語を半角空白で区切って認識していないことが根本問題
+
+**修正内容**: 単語境界マッチングの実装
+
+#### 修正1: メインマッチングロジックの変更
+**ファイル**: `backend/app/services/chat_service.py:254-264`
+
+**変更前**:
+```python
+name = (e.get('deliverable_name') or '').lower()
+match = apply_to_all or (any(t in name for t in targets) if targets else False)
+```
+
+**変更後**:
+```python
+name = (e.get('deliverable_name') or '').lower()
+
+# Word-boundary matching to avoid false matches (e.g., 'ui' in 'requirements')
+# Priority 1: Exact word match (split by spaces)
+name_words = set(name.split())
+word_match = any(t in name_words for t in targets) if targets else False
+
+# Priority 2: Substring match for keywords >= 4 chars
+# (fallback for partial words like 'admin' in 'administrator', '管理' in '管理画面')
+substring_match = any(t in name for t in targets if len(t) >= 4) if targets and not word_match else False
+
+# 全体適用フラグがtrueの場合、または個別ターゲットにマッチする場合
+match = apply_to_all or word_match or substring_match
+```
+
+**ロジック**:
+1. **優先順位1**: 単語単位の完全一致（空白で分割）
+   - 'requirements document' → `{'requirements', 'document'}`
+   - 'ui' in `{'requirements', 'document'}` → False ✓
+   - 'admin' in `{'admin', 'dashboard'}` → True ✓
+
+2. **優先順位2**: 部分一致（4文字以上のキーワードのみ）
+   - 'admin' (5文字) in 'administrator' → True ✓
+   - '管理' (2文字) in '管理画面' → True ✓（UTF-8で4バイト以上）
+   - 'ui' (2文字) → スキップ（3文字以下）
+
+#### 修正2: フォールバック処理の修正
+**ファイル**: `backend/app/services/chat_service.py:332-336`
+
+**変更前**:
+```python
+nm = (e.get('deliverable_name') or '').lower()
+if any(t in nm for t in targets):
+```
+
+**変更後**:
+```python
+nm = (e.get('deliverable_name') or '').lower()
+# Use same word-boundary matching logic
+nm_words = set(nm.split())
+nm_word_match = any(t in nm_words for t in targets)
+nm_substring_match = any(t in nm for t in targets if len(t) >= 4) if not nm_word_match else False
+if nm_word_match or nm_substring_match:
+```
+
+#### 修正3: デバッグログ強化
+**ファイル**: `backend/app/services/chat_service.py:285-286`
+
+**追加ログ**:
+```python
+match_type = "word" if word_match else ("substring" if substring_match else "none")
+print(f"[RB] item match name='{name}' match_type={match_type} before={before_pd}/{int(before_amt)} after={pd}/{int(amt)} changed={did_change}")
+```
+
+**目的**: どのマッチング方法（word/substring/none）で一致したかを確認可能にする
+
+---
+
+#### 期待される動作
+
+**テストケース**: "Please make the admin dashboard simple and affordable."
+
+**期待されるマッチング**:
+```
+Requirements Document: word_match=False, substring_match=False → match=False → 変更なし
+Admin Dashboard: word_match=True ('admin' in {'admin', 'dashboard'}) → match=True → 30%削減
+```
+
+**期待される結果**:
+- Admin Dashboardのみが調整される
+- 他の12項目は変更されない
+- AIには"Admin Dashboard"のみが変更項目として伝達される
+- AIも"Admin Dashboard"のみを調整する
+
 ### 次のアクション
 サービス再起動して動作確認を実施する
