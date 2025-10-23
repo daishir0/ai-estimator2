@@ -1,6 +1,7 @@
 // 翻訳データ（サーバーから取得）
 let translations = {};
 let currentLanguage = 'ja';
+let currentTaxRate = 0.1;  // デフォルト10%
 
 // 翻訳データをサーバーから取得
 async function loadTranslations() {
@@ -10,6 +11,7 @@ async function loadTranslations() {
       const data = await res.json();
       translations = data.translations || {};
       currentLanguage = data.language || 'ja';
+      currentTaxRate = (data.tax_rate || 10) / 100;  // パーセントを小数に変換（10 → 0.1, 0 → 0.0）
 
       // DOM更新
       translatePage();

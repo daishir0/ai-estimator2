@@ -274,7 +274,7 @@ async def get_task_result(task_id: str, db: Session = Depends(get_db)):
 
     # 合計計算
     subtotal = sum(est.amount for est in estimate_items)
-    tax = subtotal * 0.1
+    tax = subtotal * settings.get_tax_rate()
     total = subtotal + tax
 
     print(f"[API] /result OK task_id={task.id} estimates={len(estimate_items)}")
@@ -555,11 +555,26 @@ async def apply_adjusted_estimates(task_id: str, req: ApplyRequest, db: Session 
 
 @router.get("/translations")
 async def get_translations():
-    """フロントエンド用の翻訳データを返す"""
+    """フロントエンド用の翻訳データを返す（税率を動的に置換）"""
     i18n = get_i18n()
+    tax_rate = int(settings.get_tax_rate() * 100)  # 0.1 → 10, 0.0 → 0
+
+    # 翻訳データをコピーして税率を置換
+    import copy
+    translations = copy.deepcopy(i18n.translations)
+
+    # ui.label_tax の {tax_rate} を実際の税率に置換
+    if 'ui' in translations and 'label_tax' in translations['ui']:
+        translations['ui']['label_tax'] = translations['ui']['label_tax'].replace('{tax_rate}', str(tax_rate))
+
+    # excel.label_tax の {tax_rate} を実際の税率に置換
+    if 'excel' in translations and 'label_tax' in translations['excel']:
+        translations['excel']['label_tax'] = translations['excel']['label_tax'].replace('{tax_rate}', str(tax_rate))
+
     return {
         "language": i18n.language,
-        "translations": i18n.translations
+        "tax_rate": tax_rate,
+        "translations": translations
     }
 
 

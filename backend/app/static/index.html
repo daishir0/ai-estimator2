@@ -158,6 +158,24 @@
       }
     }
 
+    function handleFileSelect(inputId, labelId) {
+      const input = document.getElementById(inputId);
+      const label = document.getElementById(labelId);
+
+      if (input.files && input.files.length > 0) {
+        const filename = input.files[0].name;
+        // 翻訳キーのテンプレート置換
+        const template = t('ui.label_file_selected') || 'Selected: {filename}';
+        label.textContent = template.replace('{filename}', filename);
+        label.classList.remove('text-slate-500');
+        label.classList.add('text-slate-700', 'font-medium');
+      } else {
+        label.textContent = t('ui.label_no_file_selected');
+        label.classList.remove('text-slate-700', 'font-medium');
+        label.classList.add('text-slate-500');
+      }
+    }
+
     async function createTask() {
       const sysreq = document.getElementById('system_requirements').value;
       const fd = new FormData();
@@ -742,7 +760,17 @@
         <div id="content-excel" class="space-y-4">
           <div>
             <label class="text-sm text-slate-700" data-i18n="ui.label_excel_file">Excelファイル（.xlsx/.xls）</label>
-            <input id="file-excel" type="file" accept=".xlsx,.xls" class="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-600 file:text-white hover:file:bg-brand-700" />
+            <div class="mt-1 flex items-center gap-3">
+              <input id="file-excel" type="file" accept=".xlsx,.xls" class="hidden" onchange="handleFileSelect('file-excel', 'file-excel-label')" />
+              <button
+                type="button"
+                onclick="document.getElementById('file-excel').click()"
+                class="inline-flex items-center px-4 py-2 rounded-md border-0 text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition-colors"
+                data-i18n="ui.button_choose_file">
+                ファイルを選択
+              </button>
+              <span id="file-excel-label" class="text-sm text-slate-500" data-i18n="ui.label_no_file_selected">選択されていません</span>
+            </div>
             <div class="mt-2">
               <a href="/api/v1/sample-input" download class="text-xs text-brand-600 hover:underline" data-i18n="ui.button_download_sample">サンプルExcelをダウンロード</a>
             </div>
@@ -753,7 +781,17 @@
         <div id="content-csv" class="space-y-4 hidden">
           <div>
             <label class="text-sm text-slate-700" data-i18n="ui.label_csv_file">CSVファイル（.csv）</label>
-            <input id="file-csv" type="file" accept=".csv" class="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-600 file:text-white hover:file:bg-brand-700" />
+            <div class="mt-1 flex items-center gap-3">
+              <input id="file-csv" type="file" accept=".csv" class="hidden" onchange="handleFileSelect('file-csv', 'file-csv-label')" />
+              <button
+                type="button"
+                onclick="document.getElementById('file-csv').click()"
+                class="inline-flex items-center px-4 py-2 rounded-md border-0 text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition-colors"
+                data-i18n="ui.button_choose_file">
+                ファイルを選択
+              </button>
+              <span id="file-csv-label" class="text-sm text-slate-500" data-i18n="ui.label_no_file_selected">選択されていません</span>
+            </div>
             <div class="mt-2">
               <a href="/api/v1/sample-input-csv" download class="text-xs text-brand-600 hover:underline" data-i18n="ui.button_download_sample_csv">サンプルCSVをダウンロード</a>
             </div>
@@ -1018,7 +1056,8 @@
         document.getElementById('total').textContent = formatCurrency(apiData.totals.total);
       } else {
         const subtotal = (ests||[]).reduce((a,c)=>a+Math.round(c.amount||0),0);
-        const tax = Math.round(subtotal*0.1);
+        const taxRate = (typeof currentTaxRate !== 'undefined') ? currentTaxRate : 0.1;  // i18n.jsから取得、フォールバックは10%
+        const tax = Math.round(subtotal * taxRate);
         const total = subtotal + tax;
         document.getElementById('subtotal').textContent = formatCurrency(subtotal);
         document.getElementById('tax').textContent = formatCurrency(tax);

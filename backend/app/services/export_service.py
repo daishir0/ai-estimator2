@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Dict, Any
 import os
 from app.core.i18n import t
+from app.core.config import settings
 
 
 class ExportService:
@@ -152,12 +153,16 @@ class ExportService:
         # 合計情報を追加する開始行
         start_row = data_rows + 3
 
+        # 税率を取得して置換
+        tax_rate = int(settings.get_tax_rate() * 100)  # 0.1 → 10, 0.0 → 0
+        tax_label = t('excel.label_tax').replace('{tax_rate}', str(tax_rate))
+
         # 小計
         worksheet.cell(row=start_row, column=3, value=t('excel.label_subtotal'))
         worksheet.cell(row=start_row, column=4, value=totals["subtotal"])
 
         # 税額
-        worksheet.cell(row=start_row + 1, column=3, value=t('excel.label_tax'))
+        worksheet.cell(row=start_row + 1, column=3, value=tax_label)
         worksheet.cell(row=start_row + 1, column=4, value=totals["tax"])
 
         # 総額

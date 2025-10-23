@@ -1,11 +1,28 @@
 """見積りプロンプト"""
-from app.core.i18n import t
+from app.core.i18n import t, get_i18n
 from app.prompts.safety_guidelines import get_safety_guidelines
 
 
 def get_estimate_prompt(deliverable: dict, system_requirements: str, qa_text: str) -> str:
     """見積りプロンプトを生成"""
     unit = t('prompts.estimate_unit')
+    language = get_i18n().language
+
+    # 言語ごとの例文
+    if language == "en":
+        breakdown_example = f"""- Requirements: 5.0 {unit}
+- Design: 3.0 {unit}
+- Implementation: 4.0 {unit}
+- Testing: 2.0 {unit}
+- Documentation: 1.0 {unit}"""
+        notes_example = """This estimate is based on the creation of an EC system requirements document. Requirements definition requires time to organize overall system requirements. The design is relatively simple, and implementation time is minimized due to abundant staffing. Testing includes time for basic functionality verification. Risks include the possibility of requirement changes or additions, requiring a flexible response structure."""
+    else:
+        breakdown_example = f"""- 要件定義: 5.0 {unit}
+- 設計: 3.0 {unit}
+- 実装: 4.0 {unit}
+- テスト: 2.0 {unit}
+- ドキュメント作成: 1.0 {unit}"""
+        notes_example = """本見積もりはECシステムの要件定義書作成に基づいています。要件定義にはシステム全体の要件を整理するための時間が必要です。設計は比較的シンプルであり、実装も潤沢な人員がいるため、工数を抑えています。テストは基本的な機能確認を行うための時間を見込んでいます。リスクとしては、要件の変更や追加が発生する可能性があるため、柔軟に対応できる体制が必要です。"""
 
     return f"""
 {t('prompts.estimate_system')}
@@ -22,8 +39,9 @@ def get_estimate_prompt(deliverable: dict, system_requirements: str, qa_text: st
 {qa_text}
 
 【厳守事項】
-- 単位は必ず「{unit}」を使用し、数字の桁を間違えないこと（例: 4.5{unit}を45と書かない）
+- 単位は必ず「{unit}」を使用し、数字の桁を間違えないこと（例: 4.5 {unit}を45と書かない）
 - reasoning_breakdown内のすべての数量表記も「{unit}」とし、小数1桁を維持する
+- 数値と単位の間には必ず半角スペースを入れること
 
 【出力形式】
 次のJSONのみをコードブロックなしで返す：
@@ -38,22 +56,20 @@ def get_estimate_prompt(deliverable: dict, system_requirements: str, qa_text: st
 【reasoning_breakdown の記載内容】
 工程別の数値内訳のみを箇条書きで記載。説明文や前提条件は含めない。
 例：
-- 要件定義: 5.0{unit}
-- 設計: 3.0{unit}
-- 実装: 4.0{unit}
-- テスト: 2.0{unit}
-- ドキュメント作成: 1.0{unit}
+{breakdown_example}
 
 【reasoning_notes の記載内容】
 見積りの前提条件、リスク、補足説明を記載。工程別の数値内訳は含めない。
 例：
-本見積もりはECシステムの要件定義書作成に基づいています。要件定義にはシステム全体の要件を整理するための時間が必要です。設計は比較的シンプルであり、実装も潤沢な人員がいるため、工数を抑えています。テストは基本的な機能確認を行うための時間を見込んでいます。リスクとしては、要件の変更や追加が発生する可能性があるため、柔軟に対応できる体制が必要です。
+{notes_example}
 
 【見積り範囲】
 - 設計・実装・テスト・ドキュメント作成を含める
 - 成果物の複雑さを考慮した現実的な工数
 - reasoning_breakdownには工程別の数値内訳のみを統一フォーマットで記載（説明文は含めない）
 - reasoning_notesには前提条件、リスク、注意点、補足説明を記載（数値内訳は含めない）
+
+{t('prompts.language_instruction')}
 """
 
 
