@@ -36,7 +36,7 @@ Internet (HTTPS/HTTP)
     ↓ HTTP Port 8100 (localhost)
 ┌───────────────────────────┐
 │ systemd estimator.service │
-│  - User: ec2-user         │
+│  - User: your-username         │
 │  - Restart: on-failure    │
 │  - Logs: /var/log/        │
 └───────────────────────────┘
@@ -63,7 +63,7 @@ Internet (HTTPS/HTTP)
     │    - Schema: estimator
     │
     └─→ OpenAI API
-         - Model: gpt-4o-mini
+         - Model: OpenAI
          - API Key: 環境変数
 ```
 
@@ -134,11 +134,11 @@ After=network.target
 
 [Service]
 Type=simple
-User=ec2-user
-Group=ec2-user
-WorkingDirectory=/home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend
-EnvironmentFile=/home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/.env
-ExecStart=/bin/bash -lc "source /home/ec2-user/anaconda3/bin/activate && conda activate 311 && exec uvicorn app.main:app --host 127.0.0.1 --port 8100 --proxy-headers --timeout-keep-alive 120"
+User=your-username
+Group=your-username
+WorkingDirectory=/path/to/ai-estimator2/backend
+EnvironmentFile=/path/to/ai-estimator2/backend/.env
+ExecStart=/bin/bash -lc "source /path/to/python/bin/activate && conda activate your-python-env && exec uvicorn app.main:app --host 127.0.0.1 --port 8100 --proxy-headers --timeout-keep-alive 120"
 Restart=on-failure
 RestartSec=5
 StandardOutput=append:/var/log/estimator/backend.log
@@ -149,7 +149,7 @@ WantedBy=multi-user.target
 ```
 
 **主要パラメータ**:
-- `User/Group`: ec2-user
+- `User/Group`: your-username
 - `Restart`: on-failure (失敗時のみ再起動)
 - `RestartSec`: 5秒待機後に再起動
 - `EnvironmentFile`: .envファイルから環境変数を読み込み
@@ -228,7 +228,7 @@ backend/
 
 **エンドポイント**: `https://api.openai.com/v1/chat/completions`
 
-**使用モデル**: `gpt-4o-mini`
+**使用モデル**: `OpenAI`
 
 **用途**:
 - 質問生成
@@ -366,7 +366,7 @@ DAILY_UNIT_COST=40000
 2. ファイルパーミッション制限:
    ```bash
    chmod 600 backend/.env
-   chown ec2-user:ec2-user backend/.env
+   chown your-username:your-username backend/.env
    ```
 3. 定期的なキーローテーション
 4. 使用量監視（OpenAIダッシュボード）
@@ -498,7 +498,7 @@ sudo systemctl stop httpd
 #### 1. リポジトリクローン
 
 ```bash
-cd /home/ec2-user/hirashimallc
+cd /home/your-username/your-project-dir
 git clone <repository-url> 09_pj-見積り作成システム
 cd 09_pj-見積り作成システム/output3/backend
 ```
@@ -507,9 +507,9 @@ cd 09_pj-見積り作成システム/output3/backend
 
 ```bash
 # conda環境作成
-source /home/ec2-user/anaconda3/bin/activate
+source /path/to/python/bin/activate
 conda create -n 311 python=3.11
-conda activate 311
+conda activate your-python-env
 
 # 依存関係インストール
 pip install -r requirements.txt
@@ -540,7 +540,7 @@ nano .env
 
 ```bash
 sudo mkdir -p /var/log/estimator
-sudo chown ec2-user:ec2-user /var/log/estimator
+sudo chown your-username:your-username /var/log/estimator
 ```
 
 #### 6. systemdサービス登録
@@ -609,7 +609,7 @@ curl -u username:password https://estimator.path-finder.jp/api/v1/health
 #### 1. コード更新
 
 ```bash
-cd /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3
+cd /path/to/ai-estimator2
 
 # Gitプル
 git pull origin main
@@ -621,8 +621,8 @@ git pull origin main
 
 ```bash
 cd backend
-source /home/ec2-user/anaconda3/bin/activate
-conda activate 311
+source /path/to/python/bin/activate
+conda activate your-python-env
 pip install -r requirements.txt
 ```
 
@@ -672,7 +672,7 @@ curl -u username:password https://estimator.path-finder.jp/api/v1/translations
 #### Git使用の場合
 
 ```bash
-cd /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3
+cd /path/to/ai-estimator2
 
 # コミット履歴確認
 git log --oneline -10
@@ -692,7 +692,7 @@ sudo systemctl restart estimator
 
 ```bash
 # バックアップから復元
-cp -r /path/to/backup/backend/* /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/
+cp -r /path/to/backup/backend/* /path/to/ai-estimator2/backend/
 
 # サービス再起動
 sudo systemctl restart estimator
@@ -702,7 +702,7 @@ sudo systemctl restart estimator
 
 ```bash
 # バックアップから復元
-cp /path/to/backup/app.db.backup /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/app.db
+cp /path/to/backup/app.db.backup /path/to/ai-estimator2/backend/app.db
 
 # サービス再起動
 sudo systemctl restart estimator
@@ -712,7 +712,7 @@ sudo systemctl restart estimator
 
 ```bash
 # バックアップから復元
-cp /path/to/backup/.env.backup /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/.env
+cp /path/to/backup/.env.backup /path/to/ai-estimator2/backend/.env
 
 # サービス再起動
 sudo systemctl restart estimator
@@ -766,7 +766,7 @@ sudo systemctl start estimator
 sudo nano /etc/systemd/system/estimator.service
 
 # ExecStartを以下に変更
-ExecStart=/bin/bash -lc "source /home/ec2-user/anaconda3/bin/activate && conda activate 311 && exec uvicorn app.main:app --host 127.0.0.1 --port 8100 --workers 4 --proxy-headers --timeout-keep-alive 120"
+ExecStart=/bin/bash -lc "source /path/to/python/bin/activate && conda activate your-python-env && exec uvicorn app.main:app --host 127.0.0.1 --port 8100 --workers 4 --proxy-headers --timeout-keep-alive 120"
 
 # リロード・再起動
 sudo systemctl daemon-reload
@@ -810,21 +810,21 @@ AWS ELB/ALB
 #!/bin/bash
 # バックアップスクリプト
 
-BACKUP_DIR="/home/ec2-user/backups/estimator"
+BACKUP_DIR="/path/to/backups/estimator"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 mkdir -p $BACKUP_DIR/$TIMESTAMP
 
 # データベース
-cp /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/app.db \
+cp /path/to/ai-estimator2/backend/app.db \
    $BACKUP_DIR/$TIMESTAMP/app.db
 
 # 環境変数
-cp /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/.env \
+cp /path/to/ai-estimator2/backend/.env \
    $BACKUP_DIR/$TIMESTAMP/.env
 
 # アップロードファイル
-cp -r /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/uploads \
+cp -r /path/to/ai-estimator2/backend/uploads \
    $BACKUP_DIR/$TIMESTAMP/
 
 # Apache設定
@@ -845,7 +845,7 @@ echo "Backup completed: $BACKUP_DIR/$TIMESTAMP"
 crontab -e
 
 # 毎日午前3時にバックアップ
-0 3 * * * /home/ec2-user/scripts/backup_estimator.sh
+0 3 * * * /home/your-username/scripts/backup_estimator.sh
 ```
 
 ### 復旧手順
@@ -855,16 +855,16 @@ crontab -e
 sudo systemctl stop estimator
 
 # 2. データベース復元
-cp /home/ec2-user/backups/estimator/<timestamp>/app.db \
-   /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/app.db
+cp /path/to/backups/estimator/<timestamp>/app.db \
+   /path/to/ai-estimator2/backend/app.db
 
 # 3. 環境変数復元
-cp /home/ec2-user/backups/estimator/<timestamp>/.env \
-   /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/.env
+cp /path/to/backups/estimator/<timestamp>/.env \
+   /path/to/ai-estimator2/backend/.env
 
 # 4. アップロードファイル復元
-cp -r /home/ec2-user/backups/estimator/<timestamp>/uploads/* \
-   /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/uploads/
+cp -r /path/to/backups/estimator/<timestamp>/uploads/* \
+   /path/to/ai-estimator2/backend/uploads/
 
 # 5. サービス起動
 sudo systemctl start estimator
@@ -939,8 +939,8 @@ lsof -i :443
 lsof -i :80
 
 # リソース使用状況
-top -u ec2-user
-htop -u ec2-user
+top -u your-username
+htop -u your-username
 ```
 
 ### メトリクス収集（推奨）
@@ -974,7 +974,7 @@ htop -u ec2-user
 **コスト削減策**:
 1. プロンプト最適化（不要な情報削除）
 2. キャッシュ活用（同じ質問の再利用）
-3. レート制限実装（TODO-9で実施済み）
+3. レート制限実装（Cost management and rate limitingで実施済み）
 4. 使用量監視とアラート
 
 ### AWS インフラコスト
@@ -1030,12 +1030,12 @@ sudo systemctl restart estimator
 **原因3: conda環境が見つからない**
 ```bash
 # conda環境確認
-source /home/ec2-user/anaconda3/bin/activate
+source /path/to/python/bin/activate
 conda env list
 
 # 環境が無い場合は作成
 conda create -n 311 python=3.11
-conda activate 311
+conda activate your-python-env
 pip install -r requirements.txt
 
 # サービス再起動

@@ -44,7 +44,7 @@ Consider emergency shutdown in any of the following situations:
 
 ```bash
 # SSH connection
-ssh ec2-user@<server-IP>
+ssh your-username@<server-IP>
 
 # Stop service immediately
 sudo systemctl stop estimator
@@ -122,7 +122,7 @@ Adjust settings based on root cause:
 
 ```bash
 # Edit .env file
-cd /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend
+cd /path/to/ai-estimator2/backend
 nano .env
 
 # Edit the following
@@ -227,7 +227,7 @@ Refer to "Step 4.2 Strengthen Rate Limits" above
 
 ```bash
 # After editing config file, restart service
-cd /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend
+cd /path/to/ai-estimator2/backend
 sudo systemctl restart estimator
 ```
 
@@ -318,7 +318,7 @@ curl http://localhost:8009/api/v1/admin/metrics
 
 ```bash
 #!/bin/bash
-# /home/ec2-user/scripts/monitor_costs.sh
+# /home/your-username/scripts/monitor_costs.sh
 
 THRESHOLD=80
 RESPONSE=$(curl -s http://localhost:8009/api/v1/admin/costs)
@@ -335,7 +335,7 @@ fi
 ```bash
 # Add to crontab -e
 # Monitor costs every hour
-0 * * * * /home/ec2-user/scripts/monitor_costs.sh
+0 * * * * /home/your-username/scripts/monitor_costs.sh
 ```
 
 ---

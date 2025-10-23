@@ -2,24 +2,24 @@
 
 ## 概要
 
-このドキュメントは、AI見積りシステム（TODO-1〜3）で対応すべき具体的なセキュリティリスクと、ReadyTensor（AAIDC Week 9）の参考資料をまとめたものです。
+このドキュメントは、AI見積りシステム（testing and security phases）で対応すべき具体的なセキュリティリスクと、ReadyTensor (AAIDC Module 3)の参考資料をまとめたものです。
 
 **作成日**: 2025-10-21
-**対象**: TODO-1（テスト）、TODO-2（Guardrails）、TODO-3（OWASP LLM Top 10）
+**対象**: Testing implementation、Guardrails implementation、Security implementation (OWASP LLM Top 10)
 **目的**: 本番サービス化前にセキュリティリスクを理解し、適切な対策を実施する
 
 ---
 
 ## 目次
 
-1. [TODO-1: pytestテストスイート実装](#todo-1-pytestテストスイート実装)
-2. [TODO-2: Guardrails実装（ランタイム安全）](#todo-2-guardrails実装ランタイム安全)
-3. [TODO-3: セキュリティリスク対応（OWASP LLM Top 10）](#todo-3-セキュリティリスク対応owasp-llm-top-10)
+1. [pytestテストスイート実装](# pytestテストスイート実装)
+2. [Guardrails実装（ランタイム安全）](# guardrails実装ランタイム安全)
+3. [セキュリティリスク対応（OWASP LLM Top 10）](# セキュリティリスク対応owasp-llm-top-10)
 4. [まとめ](#まとめ)
 
 ---
 
-## TODO-1: pytestテストスイート実装
+## pytestテストスイート実装
 
 ### 📌 具体的なリスク例
 
@@ -81,7 +81,7 @@
 
 ### 📚 ReadyTensor資料URL
 
-#### Week 9 - Lesson 1: Production Testing
+#### - Lesson 1: Production Testing
 
 - **タイトル**: "Production Testing for Agentic AI Systems: What Developers Need to Know"
 - **URL**: https://www.readytensor.ai/hubs/5489/publications/production-testing-for-agentic-ai-systems-what-developers-need-to-know-aaidc-week9-lesson1
@@ -94,7 +94,7 @@
 
 ---
 
-## TODO-2: Guardrails実装（ランタイム安全）
+## Guardrails実装（ランタイム安全）
 
 ### 📌 具体的なリスク例
 
@@ -161,7 +161,7 @@
 
 ### 📚 ReadyTensor資料URL
 
-#### Week 9 - Lesson 5: Guardrails実装
+#### - Lesson 5: Guardrails実装
 
 - **タイトル**: "Guardrails in Action: Runtime Safety and Output Validation for Agentic AI"
 - **URL**: https://www.readytensor.ai/hubs/5489/publications/guardrails-in-action-runtime-safety-and-output-validation-for-agentic-ai-aaidc-week9-lesson5
@@ -183,7 +183,7 @@
 
 ---
 
-## TODO-3: セキュリティリスク対応（OWASP LLM Top 10）
+## セキュリティリスク対応（OWASP LLM Top 10）
 
 ### 📌 具体的なリスク例（OWASP LLM Top 10 2025版）
 
@@ -253,7 +253,7 @@
 
 ### 📚 ReadyTensor資料URL
 
-#### Week 9 - Lesson 3: セキュリティ
+#### - Lesson 3: セキュリティ
 
 - **タイトル**: "Autonomy Meets Attack: Securing Agentic AI from Real-World Exploits"
 - **URL**: https://www.readytensor.ai/hubs/5489/publications/autonomy-meets-attack-securing-agentic-ai-from-real-world-exploits-aaidc-week9-lesson3
@@ -264,14 +264,14 @@
 
 #### 関連資料
 
-- **Week 9 - Lesson 4**: "AI That Doesn't Harm: Principles of Safety and Alignment"
-- **Week 9 - Lesson 6**: "Giskard in Action: Scanning Agentic AI for Bias and Vulnerabilities"
+- **- Lesson 4**: "AI That Doesn't Harm: Principles of Safety and Alignment"
+- **- Lesson 6**: "Giskard in Action: Scanning Agentic AI for Bias and Vulnerabilities"
 
 ---
 
 ## まとめ
 
-### TODO-1（テスト）のリスク
+###（テスト）のリスク
 
 #### わかりやすい例
 - **例**: チャットボットがセッション再開時にメモリをクリア → ユーザー体験破綻
@@ -284,7 +284,7 @@
 
 ---
 
-### TODO-2（Guardrails）のリスク
+###（Guardrails）のリスク
 
 #### わかりやすい例
 - **例**: ユーザーが「予算$1」と入力 → AIが高級車を$1で売却承認
@@ -297,7 +297,7 @@
 
 ---
 
-### TODO-3（セキュリティ）のリスク
+###（セキュリティ）のリスク
 
 #### わかりやすい例
 - **例**: 攻撃者が10万文字入力を大量送信 → API料金が$10,000超
@@ -313,7 +313,7 @@
 
 ## 参考資料
 
-### ReadyTensor AAIDC Week 9
+### ReadyTensor AAIDC Module 3
 
 - **コースページ**: https://www.readytensor.ai/hubs/5489
 - **GitHub**: https://github.com/readytensor/rt-agentic-ai-cert-week9
@@ -336,10 +336,10 @@
 
 ## 更新履歴
 
-- **2025-10-21**: 初版作成（TODO-1〜3のリスク例とReadyTensor資料URLまとめ）
+- **2025-10-21**: 初版作成（testing and security phasesのリスク例とReadyTensor資料URLまとめ）
 
 ---
 
 **作成者**: Claude Code
 **プロジェクト**: AI見積りシステム
-**ディレクトリ**: `/home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/docs/security/`
+**ディレクトリ**: `/path/to/ai-estimator2/docs/security/`

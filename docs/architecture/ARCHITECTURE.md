@@ -77,7 +77,7 @@ graph TB
     end
 
     subgraph "External Services"
-        OpenAI[OpenAI API<br/>gpt-4o-mini<br/>- Question generation<br/>- Estimate generation<br/>- Chat adjustment]
+        OpenAI[OpenAI API<br/>OpenAI<br/>- Question generation<br/>- Estimate generation<br/>- Chat adjustment]
     end
 
     User -->|HTTPS| Apache

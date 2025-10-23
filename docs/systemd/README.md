@@ -63,9 +63,9 @@ You can manually run the cleanup batch:
 sudo systemctl start estimator-cleanup.service
 
 # Or run Python script directly
-cd /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend
-source /home/ec2-user/anaconda3/bin/activate
-conda activate 311
+cd /path/to/ai-estimator2/backend
+source /path/to/python/bin/activate
+conda activate your-python-env
 python -m app.tasks.cleanup
 ```
 
@@ -108,8 +108,8 @@ sudo journalctl -u estimator-cleanup.service -n 100
 
 ### Permission errors
 
-Make sure the service runs as `ec2-user` and has access to:
-- `/home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/`
+Make sure the service runs as `your-username` and has access to:
+- `/path/to/ai-estimator2/backend/`
 - SQLite database file (`app.db`)
 - Upload/result file directories
 

@@ -4,10 +4,10 @@ After=network.target
 
 [Service]
 Type=oneshot
-User=ec2-user
-WorkingDirectory=/home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend
-Environment="PATH=/home/ec2-user/anaconda3/envs/311/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=/home/ec2-user/anaconda3/envs/311/bin/python -m app.tasks.cleanup
+User=your-username
+WorkingDirectory=/path/to/ai-estimator2/backend
+Environment="PATH=/path/to/python/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/path/to/python/bin/python -m app.tasks.cleanup
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=estimator-cleanup

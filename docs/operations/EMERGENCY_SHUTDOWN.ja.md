@@ -44,7 +44,7 @@
 
 ```bash
 # SSH接続
-ssh ec2-user@<サーバーIP>
+ssh your-username@<サーバーIP>
 
 # サービス即座停止
 sudo systemctl stop estimator
@@ -122,7 +122,7 @@ sudo journalctl -u estimator --since "2025-10-22 10:00:00" --until "2025-10-22 1
 
 ```bash
 # .envファイル編集
-cd /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend
+cd /path/to/ai-estimator2/backend
 nano .env
 
 # 以下を編集
@@ -227,7 +227,7 @@ sudo iptables -L -n
 
 ```bash
 # 設定ファイル編集後、サービス再起動
-cd /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend
+cd /path/to/ai-estimator2/backend
 sudo systemctl restart estimator
 ```
 
@@ -318,7 +318,7 @@ curl http://localhost:8009/api/v1/admin/metrics
 
 ```bash
 #!/bin/bash
-# /home/ec2-user/scripts/monitor_costs.sh
+# /home/your-username/scripts/monitor_costs.sh
 
 THRESHOLD=80
 RESPONSE=$(curl -s http://localhost:8009/api/v1/admin/costs)
@@ -335,7 +335,7 @@ fi
 ```bash
 # crontab -e で以下を追加
 # 1時間ごとにコスト監視
-0 * * * * /home/ec2-user/scripts/monitor_costs.sh
+0 * * * * /home/your-username/scripts/monitor_costs.sh
 ```
 
 ---

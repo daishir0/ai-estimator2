@@ -49,8 +49,8 @@ grep -c "OPENAI_API_KEY" backend/.env
 - [x] API keys managed in `.env` file
 - [x] `.env` added to `.gitignore`
 - [x] System prompts stored separately in code
-- [ ] Database encryption (Under consideration for TODO-8)
-- [ ] Log sensitive information masking (Planned for TODO-7)
+- [ ] Database encryption
+- [ ] Log sensitive information masking
 
 ### 2.2 Data Backup
 - [ ] Regular database backups (Set during operation)
@@ -142,9 +142,9 @@ curl -I https://your-production-domain.com
 ```
 
 ### 5.3 Rate Limiting
-- [ ] Rate limiting implementation (Planned for TODO-9)
-- [ ] IP address-based limiting (Planned for TODO-9)
-- [ ] Per-user limiting (Planned for TODO-9)
+- [ ] Rate limiting implementation
+- [ ] IP address-based limiting
+- [ ] Per-user limiting
 
 ---
 
@@ -153,14 +153,14 @@ curl -I https://your-production-domain.com
 ### 6.1 OpenAI API
 - [x] OpenAI API key protection (Environment variables)
 - [x] API call error handling
-- [ ] API cost cap settings (Planned for TODO-9)
-- [ ] API call timeout settings (Planned for TODO-5)
-- [ ] API response logging (Planned for TODO-7)
+- [ ] API cost cap settings
+- [ ] API call timeout settings
+- [ ] API response logging
 
 ### 6.2 API Monitoring
-- [ ] API call count monitoring (Planned for TODO-7)
-- [ ] API error rate monitoring (Planned for TODO-7)
-- [ ] API cost monitoring (Planned for TODO-9)
+- [ ] API call count monitoring
+- [ ] API error rate monitoring
+- [ ] API cost monitoring
 
 **Verification Method**:
 ```bash
@@ -174,7 +174,7 @@ grep -c "OPENAI_API_KEY" backend/.env
 
 ### 7.1 Package Management
 - [x] Version pinning in `requirements.txt`
-- [x] Updated vulnerable packages to latest versions (Completed in TODO-3)
+- [x] Updated vulnerable packages to latest versions (Completed in Security)
 - [ ] Regular vulnerability scanning (Monthly recommended)
 
 **Vulnerability Scan Execution**:
@@ -197,15 +197,15 @@ pip-audit --desc
 
 ### 8.1 Log Management
 - [x] Application logging output
-- [ ] Structured logging implementation (Planned for TODO-7)
-- [ ] Log sensitive information masking (Planned for TODO-7)
+- [ ] Structured logging implementation
+- [ ] Log sensitive information masking
 - [ ] Log rotation configuration (Set during operation)
 - [ ] Long-term log storage (Set during operation)
 
 ### 8.2 Security Event Monitoring
-- [ ] Security event monitoring (Planned for TODO-7)
-- [ ] Anomaly detection alerts (Planned for TODO-7)
-- [ ] Incident response procedures (Documentation planned for TODO-6)
+- [ ] Security event monitoring
+- [ ] Anomaly detection alerts
+- [ ] Incident response procedures (Documentation planned for Documentation)
 
 **Log Review**:
 ```bash
@@ -222,12 +222,12 @@ grep ERROR /path/to/application.log
 
 ### 9.1 Error Handling
 - [x] API call error handling
-- [ ] Enhanced error handling (Planned for TODO-5)
-- [ ] Fallback processing (Planned for TODO-5)
+- [ ] Enhanced error handling
+- [ ] Fallback processing
 
 ### 9.2 Incident Response Plan
-- [ ] Incident response procedure documentation (Planned for TODO-6)
-- [ ] Escalation flow definition (Planned for TODO-6)
+- [ ] Incident response procedure documentation
+- [ ] Escalation flow definition
 - [ ] Incident response training (Conduct during operation)
 
 ---
@@ -235,13 +235,13 @@ grep ERROR /path/to/application.log
 ## 10. Testing & Coverage
 
 ### 10.1 Test Execution
-- [x] Unit test implementation (Completed in TODO-1)
-- [x] Integration test implementation (Completed in TODO-1)
-- [x] E2E test implementation (Completed in TODO-1)
-- [x] Security test implementation (Completed in TODO-1)
+- [x] Unit test implementation (Completed in Testing)
+- [x] Integration test implementation (Completed in Testing)
+- [x] E2E test implementation (Completed in Testing)
+- [x] Security test implementation (Completed in Testing)
 
 ### 10.2 Test Coverage
-- [x] Achieved 70% coverage (Achieved in TODO-1)
+- [x] Achieved 70% coverage (Achieved in Testing)
 - [x] All 152 tests PASSED
 
 **Test Execution**:
@@ -296,8 +296,8 @@ diff <(jq -S 'keys' backend/app/locales/ja.json) <(jq -S 'keys' backend/app/loca
 - [x] OWASP LLM Top 10 Risk Register (ja/en)
 - [x] Security Checklist (ja/en)
 - [x] Vulnerability scan results
-- [ ] Incident response procedures (Planned for TODO-6)
-- [ ] Operations manual (Planned for TODO-6)
+- [ ] Incident response procedures
+- [ ] Operations manual
 
 ### 13.2 Documentation Updates
 - [ ] Regular review (Recommended quarterly)
@@ -319,11 +319,11 @@ diff <(jq -S 'keys' backend/app/locales/ja.json) <(jq -S 'keys' backend/app/loca
 - **Testing**: Unit/integration/E2E/security tests, 70% coverage
 
 ### Planned (📅)
-- **TODO-5**: Enhanced error handling, fallback processing, timeout settings
-- **TODO-6**: Incident response procedures, operations manual
-- **TODO-7**: Structured logging, security event monitoring, log masking
-- **TODO-8**: Database encryption consideration
-- **TODO-9**: Rate limiting, API cost cap settings
+- : Enhanced error handling, fallback processing, timeout settings
+- : Incident response procedures, operations manual
+- : Structured logging, security event monitoring, log masking
+- : Database encryption consideration
+- : Rate limiting, API cost cap settings
 
 ### Set During Operation (🔧)
 - Data backup
@@ -365,9 +365,9 @@ diff <(jq -S 'keys' backend/app/locales/ja.json) <(jq -S 'keys' backend/app/loca
 
 - `docs/security/OWASP_LLM_RISK_REGISTER_EN.md` - OWASP LLM Top 10 Risk Register
 - `docs/security/VULNERABILITY_SCAN.md` - Vulnerability scan results
-- `TODO/TODO-1-detail.md` - Test implementation details
-- `TODO/TODO-2-detail.md` - Guardrails implementation details
-- `TODO/TODO-3-detail.md` - Security risk response details
+- `TODO/Testing-detail.md` - Test implementation details
+- `TODO/Guardrails-detail.md` - Guardrails implementation details
+- `TODO/Security-detail.md` - Security risk response details
 
 ---
 

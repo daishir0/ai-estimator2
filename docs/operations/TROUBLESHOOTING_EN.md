@@ -31,7 +31,7 @@ $ systemctl status estimator
 **Check**:
 ```bash
 lsof -i :8100
-# Output: uvicorn 12345 ec2-user ...
+# Output: uvicorn [PID] your-username ...
 ```
 
 **Solution**:
@@ -92,12 +92,12 @@ CommandNotFoundError: Your shell has not been properly configured to use 'conda 
 **Solution**:
 ```bash
 # Check conda environments
-source /home/ec2-user/anaconda3/bin/activate
+source /path/to/python/bin/activate
 conda env list
 
 # Create if missing
 conda create -n 311 python=3.11
-conda activate 311
+conda activate your-python-env
 pip install -r backend/requirements.txt
 
 # Restart service
@@ -358,8 +358,8 @@ file backend/app/locales/ja.json
 **Solution**:
 ```bash
 # Reinstall openpyxl
-source /home/ec2-user/anaconda3/bin/activate
-conda activate 311
+source /path/to/python/bin/activate
+conda activate your-python-env
 pip install --upgrade openpyxl
 
 sudo systemctl restart estimator
@@ -374,8 +374,8 @@ sudo systemctl restart estimator
 ```bash
 # Console output
 cd backend
-source /home/ec2-user/anaconda3/bin/activate
-conda activate 311
+source /path/to/python/bin/activate
+conda activate your-python-env
 uvicorn app.main:app --reload --log-level debug
 ```
 
@@ -527,7 +527,7 @@ sqlite3 backend/app.db "PRAGMA integrity_check;"
 ```bash
 # Restore from backup
 sudo systemctl stop estimator
-cp /home/ec2-user/backups/estimator/<latest>/app.db backend/app.db
+cp /path/to/backups/estimator/<latest>/app.db backend/app.db
 sudo systemctl start estimator
 ```
 

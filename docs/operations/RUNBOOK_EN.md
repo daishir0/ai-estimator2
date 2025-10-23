@@ -106,10 +106,10 @@ df -h /
 sudo journalctl --vacuum-time=7d
 
 # Delete old uploads (30+ days)
-find /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/uploads -type f -mtime +30 -delete
+find /path/to/ai-estimator2/backend/uploads -type f -mtime +30 -delete
 
 # Delete old backups (60+ days)
-find /home/ec2-user/backups/estimator -type d -mtime +60 -exec rm -rf {} +
+find /path/to/backups/estimator -type d -mtime +60 -exec rm -rf {} +
 ```
 
 #### 4. Error Log Review
@@ -218,11 +218,11 @@ Report the following via Slack/Email:
 
 ```bash
 # Check backup directory
-ls -lht /home/ec2-user/backups/estimator/ | head -10
+ls -lht /path/to/backups/estimator/ | head -10
 
 # Check latest backup contents
-LATEST_BACKUP=$(ls -t /home/ec2-user/backups/estimator/ | head -1)
-ls -lh /home/ec2-user/backups/estimator/$LATEST_BACKUP/
+LATEST_BACKUP=$(ls -t /path/to/backups/estimator/ | head -1)
+ls -lh /path/to/backups/estimator/$LATEST_BACKUP/
 ```
 
 **Verification Items**:
@@ -287,10 +287,10 @@ sudo yum update --security -y
 
 ```bash
 # Check database file
-ls -lh /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/app.db
+ls -lh /path/to/ai-estimator2/backend/app.db
 
 # SQLite integrity check
-sqlite3 /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/app.db "PRAGMA integrity_check;"
+sqlite3 /path/to/ai-estimator2/backend/app.db "PRAGMA integrity_check;"
 
 # Expected output: "ok"
 ```
@@ -362,8 +362,8 @@ sqlite3 /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/ba
 
 ```bash
 # Monthly data growth
-DB_SIZE_START=$(du -h /home/ec2-user/backups/estimator/$(ls -t /home/ec2-user/backups/estimator/ | tail -1)/app.db | cut -f1)
-DB_SIZE_END=$(du -h /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3/backend/app.db | cut -f1)
+DB_SIZE_START=$(du -h /path/to/backups/estimator/$(ls -t /path/to/backups/estimator/ | tail -1)/app.db | cut -f1)
+DB_SIZE_END=$(du -h /path/to/ai-estimator2/backend/app.db | cut -f1)
 
 echo "Database size change: $DB_SIZE_START → $DB_SIZE_END"
 
@@ -414,8 +414,8 @@ sudo grep "authentication failure" /var/log/httpd/error_log | wc -l
 mkdir -p /tmp/estimator_restore_test
 
 # Test restore from latest backup
-LATEST_BACKUP=$(ls -t /home/ec2-user/backups/estimator/ | head -1)
-cp -r /home/ec2-user/backups/estimator/$LATEST_BACKUP/* /tmp/estimator_restore_test/
+LATEST_BACKUP=$(ls -t /path/to/backups/estimator/ | head -1)
+cp -r /path/to/backups/estimator/$LATEST_BACKUP/* /tmp/estimator_restore_test/
 
 # Verify database integrity
 sqlite3 /tmp/estimator_restore_test/app.db "PRAGMA integrity_check;"
@@ -473,8 +473,8 @@ rm -rf /tmp/estimator_restore_test
    - Prevention: Retry logic strengthened
 
 ■ Improvements Implemented
-- CircuitBreaker implementation (TODO-5)
-- Rate limiting enhancement (TODO-9)
+- CircuitBreaker implementation
+- Rate limiting enhancement
 
 ■ Next Month Plans
 - Database performance optimization
@@ -683,7 +683,7 @@ cat /tmp/error_log.txt | grep -oP 'Error: \K.*' | sort | uniq -c | sort -rn
 
 2. **Take Backup**
    ```bash
-   /home/ec2-user/scripts/backup_estimator.sh
+   /home/your-username/scripts/backup_estimator.sh
    ```
 
 3. **Create Maintenance Procedure**
@@ -707,13 +707,13 @@ systemctl status estimator
 **Step 2: Perform Work**
 ```bash
 # Example: Code update
-cd /home/ec2-user/hirashimallc/09_pj-見積り作成システム/output3
+cd /path/to/ai-estimator2
 git pull origin main
 
 # Example: Dependency update
 cd backend
-source /home/ec2-user/anaconda3/bin/activate
-conda activate 311
+source /path/to/python/bin/activate
+conda activate your-python-env
 pip install -r requirements.txt
 
 # Example: Database migration
@@ -765,7 +765,7 @@ sudo systemctl restart estimator
 
 ```bash
 # 1. Take backup
-/home/ec2-user/scripts/backup_estimator.sh
+/home/your-username/scripts/backup_estimator.sh
 
 # 2. Apply patch
 sudo yum update --security -y

@@ -38,9 +38,9 @@ cd ai-estimator2/backend
 
 ```bash
 # Create conda environment
-source /home/ec2-user/anaconda3/bin/activate
+source /path/to/python/bin/activate
 conda create -n 311 python=3.11
-conda activate 311
+conda activate your-python-env
 ```
 
 #### 3. Install Dependencies
@@ -98,7 +98,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 **.vscode/settings.json**:
 ```json
 {
-  "python.defaultInterpreterPath": "/home/ec2-user/anaconda3/envs/311/bin/python",
+  "python.defaultInterpreterPath": "/path/to/python/bin/python",
   "python.linting.enabled": true,
   "python.linting.pylintEnabled": false,
   "python.linting.flake8Enabled": true,

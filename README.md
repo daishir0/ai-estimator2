@@ -1,18 +1,25 @@
 # ai-estimator2
 
 ## Overview
-AI-powered project estimation system with an intelligent web interface. This system uses OpenAI GPT-4 to automatically generate accurate project estimates based on deliverables and system requirements. It features a 2-step UX flow for estimate adjustments, where users can request cost changes (e.g., "reduce by 300,000 yen") and receive AI-generated proposal cards with detailed change breakdowns.
+AI-powered project estimation system with an intelligent web interface. This production-ready system uses OpenAI to automatically generate accurate project estimates based on deliverables and system requirements. It features a 2-step UX flow for estimate adjustments, where users can request cost changes (e.g., "reduce by 300,000 yen") and receive AI-generated proposal cards with detailed change breakdowns.
+
+### Evolution from Module 2
+
+This system evolved from **DeliverableEstimatePro3**, a CLI-based estimation tool developed in Module 2 of the ReadyTensor Agentic AI Developer Certification program. The transformation from a command-line prototype to a production-ready web application represents a comprehensive journey through enterprise-grade system development:
+
+- **Module 2 (DeliverableEstimatePro3)**: CLI tool for basic AI-powered project estimation
+- **Module 3 (ai-estimator2)**: Full-stack web application with production features including comprehensive testing (87 tests, 100% pass rate), security guardrails, operational resilience, monitoring systems, and complete documentation
 
 ### Key Features
 
 1. **Multiple Input Methods**
-   - Excel file upload (drag & drop)
+   - Excel file upload
    - CSV file upload
    - Web form input (tab-based UI)
 
 2. **AI-Powered Estimation**
    - Automatic question generation based on deliverables
-   - GPT-4o-mini powered estimate calculation
+   - OpenAI-powered estimate calculation
    - Detailed reasoning and breakdown for each estimate
 
 3. **Interactive Estimate Adjustment**
@@ -54,9 +61,10 @@ AI-powered project estimation system with an intelligent web interface. This sys
 ### Technology Stack
 
 - **Backend**: FastAPI, Python 3.11, SQLAlchemy 2.0, SQLite3
-- **AI**: OpenAI API (GPT-4o-mini)
+- **AI**: OpenAI API
 - **Frontend**: Vanilla JavaScript (embedded static UI)
 - **File Processing**: openpyxl, pandas
+- **Testing**: pytest, pytest-asyncio, pytest-cov (87 tests, 100% pass rate)
 
 ## Installation
 
@@ -70,9 +78,10 @@ cd ai-estimator2
 ### 2. Set up Python environment
 
 ```bash
-# Activate conda environment (Python 3.11)
-source /home/ec2-user/anaconda3/bin/activate
-conda activate 311
+# Activate your Python 3.11+ environment
+# Example with conda:
+# source /path/to/conda/bin/activate
+# conda activate your-python-env
 
 # Navigate to backend directory
 cd backend
@@ -116,27 +125,27 @@ DAILY_UNIT_COST_USD=500
 # Language Setting
 LANGUAGE=ja  # or 'en' for English
 
-# Cost Management (TODO-9)
+# Cost Management
 DAILY_COST_LIMIT=10.0      # Daily OpenAI API cost limit in USD
 MONTHLY_COST_LIMIT=200.0   # Monthly OpenAI API cost limit in USD
 
-# Rate Limiting (TODO-9)
+# Rate Limiting
 RATE_LIMIT_MAX_REQUESTS=100      # Max requests per window
 RATE_LIMIT_WINDOW_SECONDS=3600   # Rate limit window (1 hour)
 
-# Resilience Settings (TODO-5)
+# Resilience Settings
 OPENAI_TIMEOUT=30                    # OpenAI API timeout in seconds
 OPENAI_MAX_RETRIES=3                 # Maximum retry attempts
 OPENAI_RETRY_INITIAL_DELAY=1.0       # Initial retry delay in seconds
 CIRCUIT_BREAKER_FAILURE_THRESHOLD=5  # Failures before opening circuit
 MAX_CONCURRENT_ESTIMATES=5           # Max concurrent estimate operations
 
-# Logging (TODO-7)
+# Logging
 LOG_LEVEL=INFO        # DEBUG, INFO, WARNING, ERROR, CRITICAL
 LOG_FILE=            # Log file path (empty = console only)
 MASK_PII=false       # Enable PII masking in logs
 
-# Privacy Settings (TODO-8)
+# Privacy Settings
 DATA_RETENTION_DAYS=30        # Task data retention period in days
 AUTO_CLEANUP_ENABLED=true     # Enable automatic data cleanup
 PRIVACY_POLICY_VERSION=1.0    # Privacy policy version
@@ -224,8 +233,8 @@ sudo systemctl start estimator.service
 - Excel files must have columns: 成果物名称, 説明
 - CSV files must be UTF-8 encoded
 - Proposal cache is shared across all instances using class variables
-- The system uses GPT-4o-mini for cost-effective AI operations
-- Adjustment amounts are calculated by comparing actual estimate changes, not relying on GPT-4's target_amount_change
+- The system uses gpt-4o-mini for cost-effective AI operations
+- Adjustment amounts are calculated by comparing actual estimate changes, not relying on AI's target_amount_change
 
 ## Documentation
 
@@ -277,18 +286,25 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 # ai-estimator2
 
 ## 概要
-AIを活用したプロジェクト見積りシステムです。OpenAI GPT-4を使用して成果物とシステム要件から自動的に正確なプロジェクト見積りを生成します。見積り調整の2ステップUXフローを搭載し、「30万円安くして」のようなリクエストに対してAIが詳細な変更内訳を含む提案カードを3つ生成します。
+AIを活用したプロジェクト見積りシステムです。本番環境対応のこのシステムはOpenAIを使用して成果物とシステム要件から自動的に正確なプロジェクト見積りを生成します。見積り調整の2ステップUXフローを搭載し、「30万円安くして」のようなリクエストに対してAIが詳細な変更内訳を含む提案カードを3つ生成します。
+
+### Module 2からの進化
+
+本システムはReadyTensor Agentic AI Developer Certification ProgramのModule 2で開発した**DeliverableEstimatePro3**（CLIベースの見積りツール）を進化させたものです。コマンドラインのプロトタイプから本番環境対応のWebアプリケーションへの変革は、エンタープライズグレードのシステム開発における包括的な旅路を表しています：
+
+- **Module 2（DeliverableEstimatePro3）**: 基本的なAI駆動プロジェクト見積りCLIツール
+- **Module 3（ai-estimator2）**: 本番機能を備えたフルスタックWebアプリケーション（包括的なテスト（87テスト、100%合格率）、セキュリティガードレール、運用レジリエンス、監視システム、完全なドキュメント）
 
 ### 主要機能
 
 1. **複数の入力方式**
-   - Excelファイルアップロード（ドラッグ&ドロップ）
+   - Excelファイルアップロード
    - CSVファイルアップロード
    - Webフォーム入力（タブベースUI）
 
 2. **AI自動見積り**
    - 成果物に基づく自動質問生成
-   - GPT-4o-miniによる見積り計算
+   - OpenAIによる見積り計算
    - 各見積りの詳細な根拠と内訳表示
 
 3. **インタラクティブな見積り調整**
@@ -330,9 +346,10 @@ AIを活用したプロジェクト見積りシステムです。OpenAI GPT-4を
 ### 技術スタック
 
 - **バックエンド**: FastAPI, Python 3.11, SQLAlchemy 2.0, SQLite3
-- **AI**: OpenAI API (GPT-4o-mini)
+- **AI**: OpenAI API
 - **フロントエンド**: Vanilla JavaScript（内蔵静的UI）
 - **ファイル処理**: openpyxl, pandas
+- **テスト**: pytest, pytest-asyncio, pytest-cov（87テスト、100%合格率）
 
 ## インストール方法
 
@@ -346,9 +363,10 @@ cd ai-estimator2
 ### 2. Python環境のセットアップ
 
 ```bash
-# conda環境をアクティベート（Python 3.11）
-source /home/ec2-user/anaconda3/bin/activate
-conda activate 311
+# Python 3.11以上の環境をアクティベート
+# condaの例：
+# source /path/to/conda/bin/activate
+# conda activate your-python-env
 
 # backendディレクトリに移動
 cd backend
@@ -392,27 +410,27 @@ DAILY_UNIT_COST_USD=500
 # 言語設定
 LANGUAGE=ja  # または 'en' で英語
 
-# コスト管理（TODO-9）
+# コスト管理
 DAILY_COST_LIMIT=10.0      # OpenAI API日次コスト上限（USD）
 MONTHLY_COST_LIMIT=200.0   # OpenAI API月次コスト上限（USD）
 
-# レート制限（TODO-9）
+# レート制限
 RATE_LIMIT_MAX_REQUESTS=100      # ウィンドウあたりの最大リクエスト数
 RATE_LIMIT_WINDOW_SECONDS=3600   # レート制限ウィンドウ（1時間）
 
-# レジリエンス設定（TODO-5）
+# レジリエンス設定
 OPENAI_TIMEOUT=30                    # OpenAI APIタイムアウト（秒）
 OPENAI_MAX_RETRIES=3                 # 最大リトライ回数
 OPENAI_RETRY_INITIAL_DELAY=1.0       # 初回リトライ遅延（秒）
 CIRCUIT_BREAKER_FAILURE_THRESHOLD=5  # サーキットブレーカー開放までの失敗回数
 MAX_CONCURRENT_ESTIMATES=5           # 最大並行見積り処理数
 
-# ロギング（TODO-7）
+# ロギング
 LOG_LEVEL=INFO        # DEBUG, INFO, WARNING, ERROR, CRITICAL
 LOG_FILE=            # ログファイルパス（空=コンソールのみ）
 MASK_PII=false       # ログのPIIマスキング有効化
 
-# プライバシー設定（TODO-8）
+# プライバシー設定
 DATA_RETENTION_DAYS=30        # タスクデータ保持期間（日数）
 AUTO_CLEANUP_ENABLED=true     # 自動データクリーンアップ有効化
 PRIVACY_POLICY_VERSION=1.0    # プライバシーポリシーバージョン
@@ -500,8 +518,8 @@ sudo systemctl start estimator.service
 - Excelファイルには「成果物名称」「説明」の列が必要です
 - CSVファイルはUTF-8エンコードである必要があります
 - 提案キャッシュはクラス変数を使用して全インスタンス間で共有されます
-- システムはコスト効率の良いGPT-4o-miniを使用しています
-- 調整額はGPT-4のtarget_amount_changeではなく、実際の見積り差分を計算して算出します
+- システムはコスト効率の良いgpt-4o-miniを使用しています
+- 調整額はAIのtarget_amount_changeではなく、実際の見積り差分を計算して算出します
 
 ## ドキュメント
 

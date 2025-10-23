@@ -185,7 +185,7 @@ This checklist verifies that the AI Estimator System complies with GDPR (General
 
 ### Future Actions
 
-- **TODO-9 (Cost Management & Rate Limiting)**: Implement OpenAI API cost management and rate limiting
+- **Cost management and rate limiting (Cost Management & Rate Limiting)**: Implement OpenAI API cost management and rate limiting
 - **Periodic Review**: Conduct annual privacy policy & security measures review
 
 ---

@@ -49,8 +49,8 @@ grep -c "OPENAI_API_KEY" backend/.env
 - [x] APIキーは`.env`ファイルで管理
 - [x] `.gitignore`に`.env`追加済み
 - [x] システムプロンプトはコード内に分離保存
-- [ ] データベース暗号化（TODO-8で検討予定）
-- [ ] ログの機密情報マスキング（TODO-7で実装予定）
+- [ ] データベース暗号化（Data privacy implementationで検討予定）
+- [ ] ログの機密情報マスキング（Monitoring and observabilityで実装予定）
 
 ### 2.2 データバックアップ
 - [ ] データベースの定期バックアップ（運用時に設定）
@@ -142,9 +142,9 @@ curl -I https://your-production-domain.com
 ```
 
 ### 5.3 レート制限
-- [ ] レート制限実装（TODO-9で実装予定）
-- [ ] IPアドレスベースの制限（TODO-9で実装予定）
-- [ ] ユーザーごとの制限（TODO-9で実装予定）
+- [ ] レート制限実装（Cost management and rate limitingで実装予定）
+- [ ] IPアドレスベースの制限（Cost management and rate limitingで実装予定）
+- [ ] ユーザーごとの制限（Cost management and rate limitingで実装予定）
 
 ---
 
@@ -153,14 +153,14 @@ curl -I https://your-production-domain.com
 ### 6.1 OpenAI API
 - [x] OpenAI APIキー保護（環境変数）
 - [x] API呼び出しのエラーハンドリング
-- [ ] APIコスト上限設定（TODO-9で実装予定）
-- [ ] API呼び出しのタイムアウト設定（TODO-5で実装予定）
-- [ ] APIレスポンスのログ記録（TODO-7で実装予定）
+- [ ] APIコスト上限設定（Cost management and rate limitingで実装予定）
+- [ ] API呼び出しのタイムアウト設定（Resilience implementationで実装予定）
+- [ ] APIレスポンスのログ記録（Monitoring and observabilityで実装予定）
 
 ### 6.2 API監視
-- [ ] API呼び出し回数の監視（TODO-7で実装予定）
-- [ ] APIエラー率の監視（TODO-7で実装予定）
-- [ ] APIコストの監視（TODO-9で実装予定）
+- [ ] API呼び出し回数の監視（Monitoring and observabilityで実装予定）
+- [ ] APIエラー率の監視（Monitoring and observabilityで実装予定）
+- [ ] APIコストの監視（Cost management and rate limitingで実装予定）
 
 **確認方法**:
 ```bash
@@ -174,7 +174,7 @@ grep -c "OPENAI_API_KEY" backend/.env
 
 ### 7.1 パッケージ管理
 - [x] `requirements.txt`でバージョン固定
-- [x] 脆弱性のあるパッケージを最新版にアップデート（TODO-3で実施）
+- [x] 脆弱性のあるパッケージを最新版にアップデート（Securityで実施）
 - [ ] 定期的な脆弱性スキャン（月次推奨）
 
 **脆弱性スキャン実施**:
@@ -197,15 +197,15 @@ pip-audit --desc
 
 ### 8.1 ログ管理
 - [x] アプリケーションログの出力
-- [ ] 構造化ログ実装（TODO-7で実装予定）
-- [ ] ログの機密情報マスキング（TODO-7で実装予定）
+- [ ] 構造化ログ実装（Monitoring and observabilityで実装予定）
+- [ ] ログの機密情報マスキング（Monitoring and observabilityで実装予定）
 - [ ] ログローテーション設定（運用時に設定）
 - [ ] ログの長期保存（運用時に設定）
 
 ### 8.2 セキュリティイベント監視
-- [ ] セキュリティイベント監視（TODO-7で実装予定）
-- [ ] 異常検知アラート（TODO-7で実装予定）
-- [ ] インシデント対応手順（TODO-6で文書化予定）
+- [ ] セキュリティイベント監視（Monitoring and observabilityで実装予定）
+- [ ] 異常検知アラート（Monitoring and observabilityで実装予定）
+- [ ] インシデント対応手順（Documentationで文書化予定）
 
 **ログ確認**:
 ```bash
@@ -222,12 +222,12 @@ grep ERROR /path/to/application.log
 
 ### 9.1 エラーハンドリング
 - [x] API呼び出しのエラーハンドリング
-- [ ] エラーハンドリング強化（TODO-5で実装予定）
-- [ ] フォールバック処理（TODO-5で実装予定）
+- [ ] エラーハンドリング強化（Resilience implementationで実装予定）
+- [ ] フォールバック処理（Resilience implementationで実装予定）
 
 ### 9.2 インシデント対応計画
-- [ ] インシデント対応手順書作成（TODO-6で作成予定）
-- [ ] エスカレーションフロー定義（TODO-6で定義予定）
+- [ ] インシデント対応手順書作成（Documentationで作成予定）
+- [ ] エスカレーションフロー定義（Documentationで定義予定）
 - [ ] インシデント対応訓練（運用時に実施）
 
 ---
@@ -235,13 +235,13 @@ grep ERROR /path/to/application.log
 ## 10. テストとカバレッジ
 
 ### 10.1 テスト実施
-- [x] ユニットテスト実装（TODO-1で実装完了）
-- [x] 統合テスト実装（TODO-1で実装完了）
-- [x] E2Eテスト実装（TODO-1で実装完了）
-- [x] セキュリティテスト実装（TODO-1で実装完了）
+- [x] ユニットテスト実装（Testingで実装完了）
+- [x] 統合テスト実装（Testingで実装完了）
+- [x] E2Eテスト実装（Testingで実装完了）
+- [x] セキュリティテスト実装（Testingで実装完了）
 
 ### 10.2 テストカバレッジ
-- [x] カバレッジ70%達成（TODO-1で達成）
+- [x] カバレッジ70%達成（Testingで達成）
 - [x] 全152テストPASS
 
 **テスト実行**:
@@ -296,8 +296,8 @@ diff <(jq -S 'keys' backend/app/locales/ja.json) <(jq -S 'keys' backend/app/loca
 - [x] OWASP LLM Top 10リスク登録票（ja/en）
 - [x] セキュリティチェックリスト（ja/en）
 - [x] 脆弱性スキャン結果
-- [ ] インシデント対応手順書（TODO-6で作成予定）
-- [ ] 運用手順書（TODO-6で作成予定）
+- [ ] インシデント対応手順書（Documentationで作成予定）
+- [ ] 運用手順書（Documentationで作成予定）
 
 ### 13.2 ドキュメント更新
 - [ ] 定期レビュー（四半期ごと推奨）
@@ -319,11 +319,11 @@ diff <(jq -S 'keys' backend/app/locales/ja.json) <(jq -S 'keys' backend/app/loca
 - **テスト**: ユニット/統合/E2E/セキュリティテスト、カバレッジ70%
 
 ### 実装予定（📅）
-- **TODO-5**: エラーハンドリング強化、フォールバック処理、タイムアウト設定
-- **TODO-6**: インシデント対応手順書、運用手順書
-- **TODO-7**: 構造化ログ、セキュリティイベント監視、ログマスキング
-- **TODO-8**: データベース暗号化検討
-- **TODO-9**: レート制限、APIコスト上限設定
+- : エラーハンドリング強化、フォールバック処理、タイムアウト設定
+- : インシデント対応手順書、運用手順書
+- : 構造化ログ、セキュリティイベント監視、ログマスキング
+- : データベース暗号化検討
+- : レート制限、APIコスト上限設定
 
 ### 運用時に設定（🔧）
 - データバックアップ
@@ -365,9 +365,9 @@ diff <(jq -S 'keys' backend/app/locales/ja.json) <(jq -S 'keys' backend/app/loca
 
 - `docs/security/OWASP_LLM_RISK_REGISTER.md` - OWASP LLM Top 10リスク登録票
 - `docs/security/VULNERABILITY_SCAN.md` - 脆弱性スキャン結果
-- `TODO/TODO-1-detail.md` - テスト実装詳細
-- `TODO/TODO-2-detail.md` - Guardrails実装詳細
-- `TODO/TODO-3-detail.md` - セキュリティリスク対応詳細
+- `TODO/Testing-detail.md` - テスト実装詳細
+- `TODO/Guardrails-detail.md` - Guardrails実装詳細
+- `TODO/Security-detail.md` - セキュリティリスク対応詳細
 
 ---
 

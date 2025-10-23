@@ -130,7 +130,7 @@
           ↓                                   ↓
 ┌─────────────────────┐         ┌─────────────────────────┐
 │  SQLite Database    │         │    OpenAI API           │
-│  - tasks            │         │  - Model: gpt-4o-mini   │
+│  - tasks            │         │  - Model: OpenAI   │
 │  - deliverables     │         │  - Question generation  │
 │  - qa_pairs         │         │  - Estimate generation  │
 │  - estimates        │         │  - Chat adjustment      │
@@ -147,7 +147,7 @@
 | **Uvicorn** | ASGIサーバー | Uvicorn |
 | **FastAPI** | Webフレームワーク、REST API | FastAPI |
 | **SQLite** | データベース | SQLite 3.x |
-| **OpenAI API** | AI推論エンジン | gpt-4o-mini |
+| **OpenAI API** | AI推論エンジン | OpenAI |
 
 ---
 
@@ -178,7 +178,7 @@
    ├→ 6. 質問生成 (QuestionService)
    │   │
    │   ↓ LLMプロンプト生成
-   │   [OpenAI API: gpt-4o-mini]
+   │   [OpenAI API: OpenAI]
    │   │
    │   ↓ AIが3つの質問を生成
    │   [SQLite: INSERT INTO qa_pairs]
@@ -191,7 +191,7 @@
    │   │
    │   ↓ 9. 見積り生成 (TaskService)
    │   ├→ 成果物ごとにLLMプロンプト生成
-   │   │   [OpenAI API: gpt-4o-mini] × N回（並列実行）
+   │   │   [OpenAI API: OpenAI] × N回（並列実行）
    │   │   │
    │   │   ↓ AIが工数・金額・根拠を生成
    │   │   [SQLite: INSERT INTO estimates]
@@ -229,7 +229,7 @@
    │   │
    │   ↓ 現在の見積りを解析
    │   ↓ 調整プロンプト生成
-   │   [OpenAI API: gpt-4o-mini]
+   │   [OpenAI API: OpenAI]
    │   │
    │   ↓ AIが3つの調整案を生成
    │   [SQLite: INSERT INTO messages]
@@ -356,7 +356,7 @@
 
 | サービス | 用途 |
 |---------|------|
-| **OpenAI API** | AI推論 (gpt-4o-mini) |
+| **OpenAI API** | AI推論 (OpenAI) |
 | **Let's Encrypt** | SSL証明書 |
 
 ---
@@ -498,7 +498,7 @@ cd ai-estimator2/backend
 
 # 2. Python環境セットアップ
 conda create -n 311 python=3.11
-conda activate 311
+conda activate your-python-env
 pip install -r requirements.txt
 
 # 3. 環境変数設定
@@ -685,7 +685,7 @@ cd ai-estimator2/backend
 
 # 2. Python environment setup
 conda create -n 311 python=3.11
-conda activate 311
+conda activate your-python-env
 pip install -r requirements.txt
 
 # 3. Environment variables

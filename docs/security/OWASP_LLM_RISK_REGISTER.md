@@ -15,7 +15,7 @@
 大規模言語モデル（LLM）を利用したアプリケーションに特有のセキュリティリスクトップ10を定義した業界標準のガイドラインです。
 
 **システム概要**:
-- OpenAI API (GPT-4o-mini) を使用した見積り自動生成システム
+- OpenAI API (OpenAI) を使用した見積り自動生成システム
 - ユーザー入力（システム要件、回答）をLLMに送信
 - LLMが質問生成・見積り生成・チャット調整を実行
 
@@ -25,15 +25,15 @@
 
 | ID | リスク名 | 該当性 | 深刻度 | 状態 | 対策実施TODO |
 |----|---------|--------|--------|------|-------------|
-| LLM01 | プロンプトインジェクション | ✅ 該当 | 🔴 高 | ✅ 実装済み | TODO-2 |
-| LLM02 | 安全でない出力処理 | ✅ 該当 | 🟡 中 | ✅ 実装済み | TODO-2 |
+| LLM01 | プロンプトインジェクション | ✅ 該当 | 🔴 高 | ✅ 実装済み | Guardrails |
+| LLM02 | 安全でない出力処理 | ✅ 該当 | 🟡 中 | ✅ 実装済み | Guardrails |
 | LLM03 | 訓練データポイズニング | ❌ 非該当 | - | - | - |
-| LLM04 | モデルサービス拒否（DoS） | ✅ 該当 | 🟡 中 | 📅 予定 | TODO-9 |
-| LLM05 | サプライチェーン脆弱性 | ✅ 該当 | 🟢 低 | ✅ 実装済み | TODO-3 |
-| LLM06 | 機密情報漏洩 | ✅ 該当 | 🔴 高 | ✅ 実装済み | TODO-2 |
+| LLM04 | モデルサービス拒否（DoS） | ✅ 該当 | 🟡 中 | 📅 予定 | Cost management and rate limiting |
+| LLM05 | サプライチェーン脆弱性 | ✅ 該当 | 🟢 低 | ✅ 実装済み | Security |
+| LLM06 | 機密情報漏洩 | ✅ 該当 | 🔴 高 | ✅ 実装済み | Guardrails |
 | LLM07 | 安全でないプラグイン設計 | ❌ 非該当 | - | - | - |
 | LLM08 | 過度な権限 | ❌ 非該当 | - | - | - |
-| LLM09 | 過度な依存 | ✅ 該当 | 🟡 中 | 📅 予定 | TODO-5 |
+| LLM09 | 過度な依存 | ✅ 該当 | 🟡 中 | 📅 予定 | Resilience implementation |
 | LLM10 | モデル盗難 | ❌ 非該当 | - | - | - |
 
 ---
@@ -75,12 +75,12 @@
 ```
 
 #### 対策
-1. **SecurityServiceによるパターンマッチング検出**（TODO-2で実装）
+1. **SecurityServiceによるパターンマッチング検出**（Guardrailsで実装）
    - プロンプトインジェクションの疑わしいパターンを検出
    - システムプロンプト漏洩の試みを検出
    - 実装場所: `app/services/security_service.py:detect_prompt_injection()`
 
-2. **GuardrailsServiceによる入力検証**（TODO-2で実装）
+2. **GuardrailsServiceによる入力検証**（Guardrailsで実装）
    - 入力テキストの長さ制限（最大10,000文字）
    - 空白文字のみの入力を拒否
    - 実装場所: `app/services/guardrails_service.py:validate_input()`
@@ -89,7 +89,7 @@
    - ユーザー入力とシステムプロンプトを明確に分離
    - 実装場所: `app/prompts/*.py`
 
-4. **出力検証**（TODO-2で実装）
+4. **出力検証**（Guardrailsで実装）
    - LLM出力のスキーマ検証
    - 異常な出力の検出とリトライ
 
@@ -101,12 +101,12 @@
 
 #### 検証方法
 - プロンプトインジェクション攻撃シミュレーション
-- セキュリティテスト（TODO-1で実装）
+- セキュリティテスト（Testingで実装）
   - `tests/unit/test_security_service.py`
   - `tests/unit/test_guardrails_service.py`
 
 #### 状態
-✅ **実装済み**（TODO-2で完了）
+✅ **実装済み**（Guardrailsで完了）
 
 #### 残存リスク
 - 高度なプロンプトインジェクション技術（jailbreak等）への対策は継続的な改善が必要
@@ -144,7 +144,7 @@ LLM出力: "このシステムは[不適切な表現]です"
 ```
 
 #### 対策
-1. **GuardrailsServiceによる出力検証**（TODO-2で実装）
+1. **GuardrailsServiceによる出力検証**（Guardrailsで実装）
    - PII検出・マスキング機能
    - 有害言語検出機能
    - スキーマ検証
@@ -165,11 +165,11 @@ LLM出力: "このシステムは[不適切な表現]です"
 - `app/services/chat_service.py` - チャット調整後の検証
 
 #### 検証方法
-- LLM出力検証テスト（TODO-1で実装）
+- LLM出力検証テスト（Testingで実装）
   - `tests/unit/test_guardrails_service.py`
 
 #### 状態
-✅ **実装済み**（TODO-2で完了）
+✅ **実装済み**（Guardrailsで完了）
 
 #### 残存リスク
 - PII検出は正規表現ベースのため、すべてのパターンをカバーできない可能性
@@ -217,7 +217,7 @@ LLM出力: "このシステムは[不適切な表現]です"
 攻撃者が最大長（10,000文字）のシステム要件を大量に送信
 ```
 
-#### 対策（TODO-9で実装予定）
+#### 対策（Cost management and rate limitingで実装予定）
 1. **レート制限の実装**
    - IPアドレスベースのリクエスト制限
    - ユーザーごとのリクエスト制限
@@ -226,12 +226,12 @@ LLM出力: "このシステムは[不適切な表現]です"
 2. **APIコスト上限設定**
    - OpenAI APIの月次予算設定
    - アラート通知の実装
-   - 実装予定: TODO-9
+   - 実装予定: Cost management and rate limiting
 
 3. **タイムアウト設定**
    - LLM API呼び出しのタイムアウト
    - リトライ回数の制限
-   - 実装予定: TODO-5
+   - 実装予定: Resilience implementation
 
 4. **既存の対策**
    - ファイルサイズ制限（10MB）
@@ -243,7 +243,7 @@ LLM出力: "このシステムは[不適切な表現]です"
 - `app/services/*.py` - タイムアウト設定
 
 #### 状態
-📅 **実装予定**（TODO-9で対応予定）
+📅 **実装予定**（Cost management and rate limitingで対応予定）
 
 #### 暫定対策
 - ファイルアップロードサイズ制限: 10MB
@@ -275,7 +275,7 @@ LLM出力: "このシステムは[不適切な表現]です"
 - openpyxl 3.1.2（Excel処理）
 
 #### 対策
-1. **依存関係の脆弱性スキャン**（TODO-3で実施）
+1. **依存関係の脆弱性スキャン**（Securityで実施）
    - pip-auditを使用した定期スキャン
    - 発見された脆弱性の即時対応
 
@@ -283,7 +283,7 @@ LLM出力: "このシステムは[不適切な表現]です"
    - `requirements.txt`でバージョンを固定
    - セキュリティアップデートの追跡
 
-3. **脆弱性対応実績**（TODO-3で実施）
+3. **脆弱性対応実績**（Securityで実施）
    - fastapi: 0.104.1 → 0.109.1（ReDoS対策）
    - python-multipart: 0.0.6 → 0.0.18（ReDoS/DoS対策）
    - starlette: 0.27.0 → 0.35.1（DoS対策）
@@ -299,7 +299,7 @@ pip-audit --desc
 ```
 
 #### 状態
-✅ **実装済み**（TODO-3で完了）
+✅ **実装済み**（Securityで完了）
 
 #### 継続的対応
 - 月次での脆弱性スキャン実施
@@ -351,7 +351,7 @@ SQLインジェクション攻撃によりユーザーの見積りデータを�
    - `.gitignore`への追加
    - 実装場所: `backend/.env`, `.gitignore`
 
-2. **プロンプトインジェクション対策**（TODO-2で実装）
+2. **プロンプトインジェクション対策**（Guardrailsで実装）
    - システムプロンプト漏洩の試みを検出
    - SecurityService による検知
 
@@ -359,11 +359,11 @@ SQLインジェクション攻撃によりユーザーの見積りデータを�
    - SQLAlchemy ORMによるSQLインジェクション対策
    - パラメータ化クエリの使用
 
-4. **ログの機密情報マスキング**（TODO-7で実装予定）
+4. **ログの機密情報マスキング**（Monitoring and observabilityで実装予定）
    - APIキーのログ出力を防止
    - ユーザー入力の機密情報マスキング
 
-5. **データ暗号化**（TODO-8で検討予定）
+5. **データ暗号化**（Data privacy implementationで検討予定）
    - データベース暗号化
    - 通信の暗号化（HTTPS強制）
 
@@ -379,11 +379,11 @@ SQLインジェクション攻撃によりユーザーの見積りデータを�
   - ログにAPIキーが出力されないことを確認
 
 #### 状態
-✅ **実装済み**（TODO-2で完了、TODO-7/8で強化予定）
+✅ **実装済み**（Guardrailsで完了、Monitoring and observability/8で強化予定）
 
 #### 残存リスク
-- ログファイルへの機密情報出力（TODO-7で対応予定）
-- データベースの平文保存（TODO-8で検討予定）
+- ログファイルへの機密情報出力（Monitoring and observabilityで対応予定）
+- データベースの平文保存（Data privacy implementationで検討予定）
 
 ---
 
@@ -433,16 +433,16 @@ LLMの役割はテキスト生成のみに限定されています。
 - ビジネス継続性への影響
 - 代替手段への移行コスト
 
-#### 対策（TODO-5で実装予定）
+#### 対策（Resilience implementationで実装予定）
 1. **エラーハンドリング強化**
    - API障害時のフォールバック処理
    - ユーザーへの適切なエラーメッセージ
-   - 実装予定: TODO-5
+   - 実装予定: Resilience implementation
 
 2. **リトライロジックの実装**
    - 一時的なAPI障害への対応
    - エクスポネンシャルバックオフ
-   - 実装予定: TODO-5
+   - 実装予定: Resilience implementation
 
 3. **代替API検討**（将来的な検討事項）
    - Azure OpenAI Service
@@ -450,14 +450,14 @@ LLMの役割はテキスト生成のみに限定されています。
    - Google Gemini
 
 4. **既存の対策**
-   - タイムアウト設定（現在は未実装、TODO-5で対応予定）
+   - タイムアウト設定（現在は未実装、Resilience implementationで対応予定）
 
 #### 実装場所（予定）
 - `app/services/llm_client.py` - LLM API呼び出しラッパー
 - `app/services/*.py` - 各サービスのエラーハンドリング
 
 #### 状態
-📅 **実装予定**（TODO-5で対応予定）
+📅 **実装予定**（Resilience implementationで対応予定）
 
 #### 暫定対策
 - 手動でのシステム監視
@@ -478,29 +478,29 @@ LLMの役割はテキスト生成のみに限定されています。
 
 ## 📊 リスク対応ロードマップ
 
-### 実装済み（TODO-1〜3）
+### 実装済み（testing and security phases）
 - ✅ プロンプトインジェクション対策（LLM01）
 - ✅ 安全でない出力処理対策（LLM02）
 - ✅ 機密情報漏洩対策（LLM06）
 - ✅ サプライチェーン脆弱性対策（LLM05）
-- ✅ テスト基盤（TODO-1）
-- ✅ Guardrails実装（TODO-2）
-- ✅ 脆弱性スキャン（TODO-3）
+- ✅ テスト基盤（Testing）
+- ✅ Guardrails実装（Guardrails）
+- ✅ 脆弱性スキャン（Security）
 
 ### 実装予定
-- 📅 レジリエンス強化（TODO-5）
+- 📅 レジリエンス強化（Resilience implementation）
   - LLM09（過度な依存）への対応
   - エラーハンドリング、リトライロジック
 
-- 📅 監視・可観測性（TODO-7）
+- 📅 監視・可観測性（Monitoring and observability）
   - LLM06（機密情報漏洩）の強化
   - ログの機密情報マスキング
 
-- 📅 データプライバシー（TODO-8）
+- 📅 データプライバシー（Data privacy implementation）
   - LLM06（機密情報漏洩）の強化
   - データベース暗号化検討
 
-- 📅 コスト管理・レート制限（TODO-9）
+- 📅 コスト管理・レート制限（Cost management and rate limiting）
   - LLM04（モデルサービス拒否）への対応
   - レート制限、APIコスト上限設定
 
@@ -509,7 +509,7 @@ LLMの役割はテキスト生成のみに限定されています。
 ## 🔍 セキュリティレビュー
 
 ### 次回レビュー予定
-- **日時**: TODO-9完了後
+- **日時**: Cost management and rate limiting完了後
 - **レビュー項目**:
   - 実装済み対策の有効性確認
   - 新たな脅威の評価
@@ -526,9 +526,9 @@ LLMの役割はテキスト生成のみに限定されています。
 
 - [OWASP LLM Top 10 公式サイト](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
 - [OWASP LLM Top 10 日本語版](https://owasp.org/www-project-top-10-for-large-language-model-applications/llm-top-10-governance-doc/LLM_AI_Security_and_Governance_Checklist-v1.pdf)
-- `TODO/TODO-2-detail.md` - Guardrails実装詳細
-- `TODO/TODO-3-detail.md` - セキュリティリスク対応詳細
-- `/home/ec2-user/hirashimallc/02_pj-ReadyTensor/output/doc/34_autonomy-meets-attack-securing-agentic-ai-from-real-world-exploits-aaidc-week9-lesson3.md`
+- `TODO/Guardrails-detail.md` - Guardrails実装詳細
+- `TODO/Security-detail.md` - セキュリティリスク対応詳細
+- `/home/your-username/your-project-dir/02_pj-ReadyTensor/output/doc/34_autonomy-meets-attack-securing-agentic-ai-from-real-world-exploits-aaidc-week9-lesson3.md`
 
 ---
 

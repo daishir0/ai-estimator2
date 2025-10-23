@@ -195,7 +195,7 @@ For safety-related inquiries and incident reports, please contact:
 **Effective Date**: 2025-10-18
 **Revision History**:
 - 2025-10-18: Initial draft created
-- 2025-10-20: Officially effective based on TODO-4 implementation
+- 2025-10-20: Officially effective based on Implementation
 
 **Approver**: [Approver Name]
 **Document ID**: SAFETY-POLICY-001

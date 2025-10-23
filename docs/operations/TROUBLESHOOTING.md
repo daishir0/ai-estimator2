@@ -31,7 +31,7 @@ $ systemctl status estimator
 **確認**:
 ```bash
 lsof -i :8100
-# 出力: uvicorn 12345 ec2-user ...
+# 出力: uvicorn [PID] your-username ...
 ```
 
 **対処**:
@@ -92,12 +92,12 @@ CommandNotFoundError: Your shell has not been properly configured to use 'conda 
 **対処**:
 ```bash
 # conda環境確認
-source /home/ec2-user/anaconda3/bin/activate
+source /path/to/python/bin/activate
 conda env list
 
 # 環境が無い場合は作成
 conda create -n 311 python=3.11
-conda activate 311
+conda activate your-python-env
 pip install -r backend/requirements.txt
 
 # サービス再起動
@@ -108,8 +108,8 @@ sudo systemctl restart estimator
 
 **対処**:
 ```bash
-source /home/ec2-user/anaconda3/bin/activate
-conda activate 311
+source /path/to/python/bin/activate
+conda activate your-python-env
 cd backend
 pip install -r requirements.txt --upgrade
 
@@ -387,8 +387,8 @@ file backend/app/locales/ja.json
 **対処**:
 ```bash
 # openpyxl再インストール
-source /home/ec2-user/anaconda3/bin/activate
-conda activate 311
+source /path/to/python/bin/activate
+conda activate your-python-env
 pip install --upgrade openpyxl
 
 sudo systemctl restart estimator
@@ -403,8 +403,8 @@ sudo systemctl restart estimator
 ```bash
 # コンソールに直接出力
 cd backend
-source /home/ec2-user/anaconda3/bin/activate
-conda activate 311
+source /path/to/python/bin/activate
+conda activate your-python-env
 uvicorn app.main:app --reload --log-level debug
 ```
 
@@ -565,7 +565,7 @@ sudo systemctl restart estimator
 
 **対処**:
 - 月次予算の見直し
-- レート制限の調整（TODO-9で実装済み）
+- レート制限の調整（Cost management and rate limitingで実装済み）
 - プロンプト最適化
 
 ---
@@ -584,7 +584,7 @@ sqlite3 backend/app.db "PRAGMA integrity_check;"
 ```bash
 # バックアップから復元
 sudo systemctl stop estimator
-cp /home/ec2-user/backups/estimator/<latest>/app.db backend/app.db
+cp /path/to/backups/estimator/<latest>/app.db backend/app.db
 sudo systemctl start estimator
 ```
 
