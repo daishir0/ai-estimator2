@@ -4,12 +4,12 @@
 
 1. [Top 10 Common Issues](#top-10-common-issues)
 2. [Log Checking Methods](#log-checking-methods)
-3. [Error Code Responses](#error-code-responses)
+3. [Error Code Resolutions](#error-code-resolutions)
 4. [Performance Issues](#performance-issues)
-5. [OpenAI API Issues](#openai-api-issues)
+5. [OpenAI API Related Issues](#openai-api-related-issues)
 6. [Database Issues](#database-issues)
 7. [Network Issues](#network-issues)
-8. [Multi-language Issues](#multi-language-issues)
+8. [Multi-language Related Issues](#multi-language-related-issues)
 
 ---
 
@@ -39,10 +39,10 @@ lsof -i :8100
 # Identify process
 ps aux | grep uvicorn | grep 8100
 
-# Kill process
+# Stop process
 kill <PID>
 
-# Or kill all uvicorn on port 8100
+# Or stop all uvicorn processes
 pkill -f "uvicorn.*8100"
 
 # Restart service
@@ -58,12 +58,12 @@ DAILY_UNIT_COST
   Input should be a valid integer, unable to parse string as an integer
 ```
 
-**Cause**: Inline comments in `.env` file
+**Cause**: End-of-line comments in `.env` file
 
 **Check**:
 ```bash
 cat backend/.env | grep DAILY_UNIT_COST
-# NG: DAILY_UNIT_COST=40000  # Comment
+# NG: DAILY_UNIT_COST=40000  # comment
 ```
 
 **Solution**:
@@ -82,7 +82,7 @@ DAILY_UNIT_COST=40000
 sudo systemctl restart estimator
 ```
 
-#### Cause 1-3: conda Environment Not Found
+#### Cause 1-3: Conda Environment Not Found
 
 **Error Log**:
 ```
@@ -91,11 +91,11 @@ CommandNotFoundError: Your shell has not been properly configured to use 'conda 
 
 **Solution**:
 ```bash
-# Check conda environments
+# Check conda environment
 source /path/to/python/bin/activate
 conda env list
 
-# Create if missing
+# Create if doesn't exist
 conda create -n 311 python=3.11
 conda activate your-python-env
 pip install -r backend/requirements.txt
@@ -104,9 +104,21 @@ pip install -r backend/requirements.txt
 sudo systemctl restart estimator
 ```
 
+#### Cause 1-4: Missing Dependencies
+
+**Solution**:
+```bash
+source /path/to/python/bin/activate
+conda activate your-python-env
+cd backend
+pip install -r requirements.txt --upgrade
+
+sudo systemctl restart estimator
+```
+
 ---
 
-### Issue 2: Estimate Generation Fails
+### Issue 2: Estimation Generation Fails
 
 **Symptoms**: "OpenAI API error" displayed
 
@@ -152,8 +164,25 @@ sudo systemctl restart estimator
 
 **Solution**:
 - Review billing settings
-- Increase usage limits
-- Adjust rate limits
+- Increase usage limit
+- Adjust rate limiting
+
+#### Cause 2-4: CircuitBreaker in OPEN State
+
+**Check**:
+```bash
+journalctl -u estimator -n 100 | grep "CircuitBreaker"
+# Output: CircuitBreaker is OPEN
+```
+
+**Solution**:
+```bash
+# Wait 60 seconds for HALF_OPEN transition
+sleep 60
+
+# Or restart immediately
+sudo systemctl restart estimator
+```
 
 ---
 
@@ -171,7 +200,7 @@ ls -lh /path/to/upload/file.xlsx
 
 #### Solution 1: Reduce File Size
 
-- Delete unnecessary rows/columns
+- Remove unnecessary rows/columns
 - Compress to under 10MB
 
 #### Solution 2: Change Configuration
@@ -219,7 +248,7 @@ sudo systemctl reload httpd
 
 **Check**:
 ```bash
-# Check certificate expiry
+# Check certificate expiration
 sudo certbot certificates
 
 # Or
@@ -253,7 +282,7 @@ ps aux | grep uvicorn
 # Restart service
 sudo systemctl restart estimator
 
-# Check database integrity
+# Database integrity check
 sqlite3 backend/app.db "PRAGMA integrity_check;"
 ```
 
@@ -261,24 +290,24 @@ sqlite3 backend/app.db "PRAGMA integrity_check;"
 
 ### Issue 7: Out of Memory Error
 
-**Symptoms**: Service suddenly stops, OOM Killer logs
+**Symptoms**: Service suddenly stops, OOM Killer log
 
 **Check**:
 ```bash
 # Memory usage
 free -h
 
-# OOM Killer logs
+# OOM Killer log
 dmesg | grep -i "out of memory"
 journalctl -k | grep -i "killed process"
 ```
 
 **Solution**:
 ```bash
-# Immediate: Restart service
+# Immediate action: Restart service
 sudo systemctl restart estimator
 
-# Long-term: Change instance type
+# Long-term solution: Change instance type
 # t3.small → t3.medium
 ```
 
@@ -297,7 +326,7 @@ grep -r "timeout" backend/.env
 
 **Solution**:
 ```bash
-# Change Apache config
+# Change Apache configuration
 sudo nano /etc/httpd/conf.d/estimator.path-finder.jp.conf
 
 # Extend ProxyTimeout
@@ -319,7 +348,7 @@ sudo systemctl restart estimator
 
 ### Issue 9: Language Switch Not Reflected
 
-**Symptoms**: Changed to LANGUAGE=en but still showing Japanese
+**Symptoms**: Still Japanese even after changing to LANGUAGE=en
 
 **Check**:
 ```bash
@@ -341,9 +370,9 @@ sudo systemctl restart estimator
 
 ---
 
-### Issue 10: Excel Output Garbled
+### Issue 10: Excel Output Garbled Text
 
-**Symptoms**: Downloaded Excel file shows garbled characters
+**Symptoms**: Downloaded Excel file has garbled characters
 
 **Check**:
 ```bash
@@ -372,7 +401,7 @@ sudo systemctl restart estimator
 ### Development Environment
 
 ```bash
-# Console output
+# Output directly to console
 cd backend
 source /path/to/python/bin/activate
 conda activate your-python-env
@@ -384,10 +413,10 @@ uvicorn app.main:app --reload --log-level debug
 #### Real-time Logs
 
 ```bash
-# estimator service logs (real-time)
+# estimator service log (real-time)
 journalctl -u estimator -f
 
-# Apache logs (real-time)
+# Apache log (real-time)
 sudo tail -f /var/log/httpd/access_log
 sudo tail -f /var/log/httpd/error_log
 ```
@@ -422,22 +451,22 @@ sudo tail -f /var/log/httpd/error_log
 
 ---
 
-## Error Code Responses
+## Error Code Resolutions
 
 ### HTTP Status Codes
 
 | Code | Meaning | Solution |
 |------|---------|----------|
-| 400 | Bad Request | Check request parameters, Guardrails |
-| 401 | Unauthorized | Check Basic Auth, reset password |
+| 400 | Bad Request | Check request parameters, Guardrails check |
+| 401 | Unauthorized | Check Basic auth, reset password |
 | 403 | Forbidden | Check access permissions, file permissions |
 | 404 | Not Found | Check URL path, routing |
 | 413 | Payload Too Large | Reduce file size, change MAX_UPLOAD_SIZE_MB |
 | 422 | Unprocessable Entity | Check request body, Pydantic validation |
 | 500 | Internal Server Error | Check server logs, stack trace |
-| 502 | Bad Gateway | Check backend service, Uvicorn status |
-| 503 | Service Unavailable | Check resource limits, concurrency |
-| 504 | Gateway Timeout | Check timeout settings, optimize processing |
+| 502 | Bad Gateway | Check backend service, Uvicorn startup |
+| 503 | Service Unavailable | Check resource limits, concurrent executions |
+| 504 | Gateway Timeout | Check timeout settings, optimize processing time |
 
 ### OpenAI API Errors
 
@@ -487,9 +516,24 @@ sudo systemctl restart estimator
 sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
 ```
 
+### Slow Response
+
+**Check**:
+```bash
+# Measure response time
+time curl -u user:pass https://estimator.path-finder.jp/api/v1/health
+```
+
+**Solution**:
+```bash
+# Optimize database queries
+# Adjust parallel processing
+# Utilize caching
+```
+
 ---
 
-## OpenAI API Issues
+## OpenAI API Related Issues
 
 ### API Call Failure
 
@@ -504,12 +548,25 @@ ping api.openai.com
 
 **Solution**:
 ```bash
-# Retry logic auto-executes (max 3 attempts)
-# CircuitBreaker auto-fallback
+# Retry logic auto-executes (max 3 times)
+# CircuitBreaker automatic fallback
 
 # Manual retry
 sudo systemctl restart estimator
 ```
+
+### API Usage Exceeded
+
+**Check**:
+```bash
+# Check OpenAI dashboard
+# https://platform.openai.com/usage
+```
+
+**Solution**:
+- Review monthly budget
+- Adjust rate limiting (implemented in Cost management and rate limiting)
+- Optimize prompts
 
 ---
 
@@ -531,11 +588,24 @@ cp /path/to/backups/estimator/<latest>/app.db backend/app.db
 sudo systemctl start estimator
 ```
 
+### Database Lock
+
+**Check**:
+```bash
+# Check locking process
+lsof backend/app.db
+```
+
+**Solution**:
+```bash
+sudo systemctl restart estimator
+```
+
 ---
 
 ## Network Issues
 
-### External Connection Failed
+### External Connection Unavailable
 
 **Check**:
 ```bash
@@ -548,16 +618,31 @@ nslookup api.openai.com
 
 **Solution**:
 ```bash
-# Check network settings
+# Check network configuration
 ip addr show
 route -n
 
 # Check security group (EC2)
 ```
 
+### SSL/TLS Certificate Issues
+
+**Check**:
+```bash
+# Check certificate chain
+openssl s_client -connect estimator.path-finder.jp:443 -showcerts
+```
+
+**Solution**:
+```bash
+# Renew certificate
+sudo certbot renew
+sudo systemctl reload httpd
+```
+
 ---
 
-## Multi-language Issues
+## Multi-language Related Issues
 
 ### Missing Translation Key Error
 
@@ -569,23 +654,62 @@ route -n
 nano backend/app/locales/ja.json
 nano backend/app/locales/en.json
 
-# Add example
+# Example addition
 {
   "ui": {
-    "some_key": "Translation text"
+    "some_key": "translated text"
   }
 }
 
 sudo systemctl restart estimator
 ```
 
+### LLM Output Not in Expected Language
+
+**Check**:
+```bash
+# Check if prompt contains language instruction
+cat backend/app/prompts/question_prompts.py | grep language_instruction
+```
+
+**Solution**:
+```python
+# Add language instruction to prompt
+language_instruction = t('prompts.language_instruction')
+prompt = f"{base_prompt}\n\n{language_instruction}"
+```
+
+---
+
+## Emergency Response Flowchart
+
+```
+Issue Occurs
+   ↓
+Check Service Status
+   ├─ Stopped → systemctl restart estimator
+   └─ Running → Next
+       ↓
+Check Logs
+   ├─ OpenAI API Error → Check API status
+   ├─ Database Error → Integrity check
+   ├─ Memory Error → Restart
+   └─ Other → Detailed investigation
+       ↓
+Implement Solution
+   ↓
+Verify Operation
+   ├─ Normal → Complete
+   └─ Abnormal → Escalate
+```
+
 ---
 
 ## References
 
-- [DEPLOYMENT_EN.md](../deployment/DEPLOYMENT_EN.md) - Deployment Guide
-- [RUNBOOK_EN.md](RUNBOOK_EN.md) - Operations Runbook
-- [ARCHITECTURE_EN.md](../architecture/ARCHITECTURE_EN.md) - Architecture Documentation
+- [DEPLOYMENT.md](../deployment/DEPLOYMENT.md) - Deployment Guide
+- [RUNBOOK.md](RUNBOOK.md) - Operations Runbook
+- [ARCHITECTURE.md](../architecture/ARCHITECTURE.md) - Architecture Documentation
 
 ---
 

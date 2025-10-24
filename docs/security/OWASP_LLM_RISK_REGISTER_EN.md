@@ -217,7 +217,7 @@ Attacker sends 100 task creation requests per second using automated tools
 Attacker sends maximum length (10,000 characters) system requirements in bulk
 ```
 
-#### Mitigation
+#### Mitigation (To be implemented in Cost management and rate limiting)
 1. **Rate Limiting Implementation**
    - IP address-based request limits
    - Per-user request limits
@@ -246,8 +246,9 @@ Attacker sends maximum length (10,000 characters) system requirements in bulk
 📅 **Planned** (To be addressed in Cost management and rate limiting)
 
 #### Temporary Measures
-- Manual system monitoring
-- OpenAI API status page monitoring
+- File upload size limit: 10MB
+- Input text length limit: 10,000 characters
+- Manual anomaly detection and blocking
 
 ---
 
@@ -358,11 +359,11 @@ SQL injection attack to steal user estimation data
    - SQL injection mitigation via SQLAlchemy ORM
    - Use of parameterized queries
 
-4. **Log Sensitive Information Masking**
+4. **Log Sensitive Information Masking** (To be implemented in Monitoring and observability)
    - Prevent API key logging
    - Mask sensitive information in user inputs
 
-5. **Data Encryption**
+5. **Data Encryption** (To be considered in Data privacy implementation)
    - Database encryption
    - Communication encryption (HTTPS enforcement)
 
@@ -381,8 +382,8 @@ SQL injection attack to steal user estimation data
 ✅ **Implemented** (Completed in Guardrails, strengthening planned for Monitoring and observability/8)
 
 #### Residual Risks
-- Sensitive information output to log files
-- Plaintext database storage
+- Sensitive information output to log files (To be addressed in Monitoring and observability)
+- Plaintext database storage (To be considered in Data privacy implementation)
 
 ---
 
@@ -432,7 +433,7 @@ The system has strong dependency on OpenAI API, posing the following risks:
 - Business continuity impact
 - Migration costs to alternatives
 
-#### Mitigation
+#### Mitigation (To be implemented in Resilience implementation)
 1. **Enhanced Error Handling**
    - Fallback processing during API failures
    - Appropriate error messages to users
@@ -477,29 +478,29 @@ Since models are not hosted in-house, model theft risk is not applicable.
 
 ## 📊 Risk Mitigation Roadmap
 
-### Implemented (Testing~3)
+### Implemented (testing and security phases)
 - ✅ Prompt injection mitigation (LLM01)
 - ✅ Insecure output handling mitigation (LLM02)
 - ✅ Sensitive information disclosure mitigation (LLM06)
 - ✅ Supply chain vulnerability mitigation (LLM05)
-- ✅ Test framework
-- ✅ Guardrails implementation
-- ✅ Vulnerability scanning
+- ✅ Test framework (Testing)
+- ✅ Guardrails implementation (Guardrails)
+- ✅ Vulnerability scanning (Security)
 
 ### Planned
-- 📅 Resilience enhancement
+- 📅 Resilience enhancement (Resilience implementation)
   - Addressing LLM09 (Overreliance)
   - Error handling, retry logic
 
-- 📅 Monitoring and observability
+- 📅 Monitoring and observability (Monitoring and observability)
   - Strengthening LLM06 (Sensitive information disclosure)
   - Log sensitive information masking
 
-- 📅 Data privacy
+- 📅 Data privacy (Data privacy implementation)
   - Strengthening LLM06 (Sensitive information disclosure)
   - Database encryption consideration
 
-- 📅 Cost management and rate limiting
+- 📅 Cost management and rate limiting (Cost management and rate limiting)
   - Addressing LLM04 (Model Denial of Service)
   - Rate limiting, API cost cap settings
 
