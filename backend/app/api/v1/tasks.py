@@ -85,7 +85,7 @@ async def create_task(
             else:
                 os.remove(temp_file)
                 raise HTTPException(
-                    status_code=400, detail="Excel（.xlsx, .xls）またはCSV（.csv）ファイルのみアップロード可能です"
+                    status_code=400, detail=t('messages.invalid_file_type')
                 )
 
             # タスク作成
@@ -124,7 +124,7 @@ async def create_task(
             return task
 
         except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="成果物データのJSON解析に失敗しました")
+            raise HTTPException(status_code=400, detail=t('messages.json_parse_failed'))
         except Exception as e:
             if 'temp_file' in locals() and os.path.exists(temp_file):
                 os.remove(temp_file)
@@ -133,7 +133,7 @@ async def create_task(
     else:
         raise HTTPException(
             status_code=400,
-            detail="ファイルまたは成果物データを指定してください"
+            detail=t('messages.file_or_data_required')
         )
 
 
@@ -208,7 +208,7 @@ async def submit_answers(
         task_service.process_task(task_id, request_id)
         logger.info("Answer submission completed", request_id=request_id, task_id=task_id)
 
-        return {"message": "タスク処理を開始しました", "task_id": task_id}
+        return {"message": t('messages.task_processing_started'), "task_id": task_id}
 
     except Exception as e:
         logger.error("Answer submission failed", request_id=request_id, task_id=task_id, error=str(e))
@@ -247,7 +247,7 @@ async def get_task_result(task_id: str, db: Session = Depends(get_db)):
     if task.status != "completed":
         print(f"[API] /result not ready task_id={task_id} status={task.status}")
         raise HTTPException(
-            status_code=400, detail=f"タスクは完了していません（ステータス: {task.status}）"
+            status_code=400, detail=t('messages.task_not_completed').replace('{status}', task.status)
         )
 
     # 見積り取得

@@ -2,6 +2,7 @@
 import pandas as pd
 from typing import List, Dict
 from app.schemas.deliverable import Deliverable
+from app.core.i18n import t
 
 
 class InputService:
@@ -15,7 +16,7 @@ class InputService:
 
             # A列: 成果物名称, B列: 説明
             if len(df.columns) < 2:
-                raise ValueError("Excelファイルには少なくとも2列（成果物名称、説明）が必要です。")
+                raise ValueError(t('messages.excel_min_columns'))
 
             # NaN値を空文字で置換
             df = df.fillna('')
@@ -34,7 +35,7 @@ class InputService:
         except FileNotFoundError:
             raise FileNotFoundError(f"Excelファイル '{excel_path}' が見つかりません。")
         except Exception as e:
-            raise ValueError(f"Excelファイルの読み込みに失敗しました: {e}")
+            raise ValueError(t('messages.excel_load_failed').replace('{error}', str(e)))
 
     @staticmethod
     def load_csv_data(csv_path: str) -> List[Dict[str, str]]:
@@ -45,7 +46,7 @@ class InputService:
 
             # 列数チェック
             if len(df.columns) < 2:
-                raise ValueError("CSVファイルには少なくとも2列（成果物名称、説明）が必要です。")
+                raise ValueError(t('messages.csv_min_columns'))
 
             # NaN値を空文字で置換
             df = df.fillna('')
@@ -64,7 +65,7 @@ class InputService:
         except FileNotFoundError:
             raise FileNotFoundError(f"CSVファイル '{csv_path}' が見つかりません。")
         except Exception as e:
-            raise ValueError(f"CSVファイルの読み込みに失敗しました: {e}")
+            raise ValueError(t('messages.csv_load_failed').replace('{error}', str(e)))
 
     @staticmethod
     def parse_deliverables_json(deliverables_data: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -87,4 +88,4 @@ class InputService:
             return deliverables
 
         except Exception as e:
-            raise ValueError(f"成果物データの解析に失敗しました: {e}")
+            raise ValueError(t('messages.deliverable_parse_failed').replace('{error}', str(e)))

@@ -98,10 +98,11 @@ class ChatService:
             # Preserve reasoning_breakdown and reasoning_notes
             reasoning_breakdown = e.get("reasoning_breakdown") or e.get("reasoning") or ""
             reasoning_notes = e.get("reasoning_notes") or ""
-            adjustment_note = f"【調整】上限予算に合わせて係数 {ratio:.2f} を適用"
-            if reasoning_notes:
+            adjustment_note = t('messages.adjustment_note_budget_cap').replace('{ratio}', f'{ratio:.2f}')
+            # Check if adjustment note already exists to avoid duplicates
+            if reasoning_notes and adjustment_note not in reasoning_notes:
                 reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
-            else:
+            elif not reasoning_notes:
                 reasoning_notes = adjustment_note
             out.append({
                 **e,
@@ -111,7 +112,16 @@ class ChatService:
                 "reasoning_breakdown": reasoning_breakdown,
                 "reasoning_notes": reasoning_notes
             })
-        note = f"総額 {int(current):,} 円 → {int(self._calc_totals(out)['total']):,} 円（上限 {int(cap):,} 円に合わせ係数 {ratio:.2f} を適用）"
+        # Generate summary note using translation
+        note = t('messages.budget_cap_summary').replace(
+            '{current}', f'{int(current):,}'
+        ).replace(
+            '{new}', f'{int(self._calc_totals(out)["total"]):,}'
+        ).replace(
+            '{cap}', f'{int(cap):,}'
+        ).replace(
+            '{ratio}', f'{ratio:.2f}'
+        )
         return out, note
 
     def _unit_cost_change(self, estimates: List[Dict[str, Any]], new_unit_cost: float) -> Tuple[List[Dict[str, Any]], str]:
@@ -122,10 +132,11 @@ class ChatService:
             # Preserve reasoning_breakdown and reasoning_notes
             reasoning_breakdown = e.get("reasoning_breakdown") or e.get("reasoning") or ""
             reasoning_notes = e.get("reasoning_notes") or ""
-            adjustment_note = f"【調整】単価を {int(new_unit_cost):,} 円/人日に変更"
-            if reasoning_notes:
+            adjustment_note = t('messages.adjustment_note_unit_cost').replace('{cost}', f'{int(new_unit_cost):,}')
+            # Check if adjustment note already exists to avoid duplicates
+            if reasoning_notes and adjustment_note not in reasoning_notes:
                 reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
-            else:
+            elif not reasoning_notes:
                 reasoning_notes = adjustment_note
             out.append({
                 **e,
@@ -144,10 +155,11 @@ class ChatService:
             # Preserve reasoning_breakdown and reasoning_notes
             reasoning_breakdown = e.get("reasoning_breakdown") or e.get("reasoning") or ""
             reasoning_notes = e.get("reasoning_notes") or ""
-            adjustment_note = f"【調整】リスクバッファ {percent:.1f}% を上乗せ"
-            if reasoning_notes:
+            adjustment_note = t('messages.adjustment_note_risk_buffer').replace('{percent}', f'{percent:.1f}')
+            # Check if adjustment note already exists to avoid duplicates
+            if reasoning_notes and adjustment_note not in reasoning_notes:
                 reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
-            else:
+            elif not reasoning_notes:
                 reasoning_notes = adjustment_note
             out.append({
                 **e,
@@ -173,8 +185,209 @@ class ChatService:
         note = "除外対象: " + (", ".join(removed) if removed else "なし")
         return out, note
 
+    # --- AI意図解析（Stage 0） ---
+    def _analyze_intent_with_ai(self, message: str, estimates: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """
+        AI-powered intent analysis to identify target deliverables and adjustment type.
+
+        Args:
+            message: User's adjustment request
+            estimates: Current list of deliverables
+
+        Returns:
+            {
+                "target_items": ["Frontend Development"],
+                "adjustment_type": "reduce" | "increase" | "remove",
+                "reduction_ratio": 0.7,  # 0.5-1.0 for reduction, >1.0 for increase
+                "reasoning": "brief explanation"
+            }
+            or None if analysis fails
+        """
+        try:
+            print(f"[Intent] Calling AI intent analysis...")
+            print(f"[Intent] User message: '{message[:100]}{'...' if len(message) > 100 else ''}'")
+
+            # Extract deliverable names
+            items_list = [e.get('deliverable_name') for e in estimates]
+            items_str = ', '.join(items_list)
+
+            print(f"[Intent] Deliverables: {items_str}")
+
+            # Get language instruction
+            language_instruction = t('prompts.chat_language_instruction')
+
+            # Build prompt
+            prompt = f"""{language_instruction}
+
+You are an expert project manager analyzing user's adjustment requests.
+
+**Current Deliverables**:
+{items_str}
+
+**User's Request**:
+{message}
+
+**Your Task**:
+Analyze the user's intent and identify:
+1. Which deliverables are mentioned or implied in the request?
+2. What type of adjustment? (reduce, increase, remove)
+3. How much adjustment? (ratio: 0.5-1.0 for reduction, >1.0 for increase)
+
+**Important**:
+- Match deliverable names EXACTLY from the list above
+- Use partial matching (e.g., "frontend" matches "Frontend Development")
+- If multiple interpretations exist, choose the most likely one
+- For "simple", "affordable", "basic" → reduction_ratio: 0.7 (30% reduction)
+- For "enhance", "improve", "strengthen" → reduction_ratio: 1.2 (20% increase)
+- For "remove", "exclude", "skip" → adjustment_type: "remove"
+
+**Output Format** (JSON only, no code block, no markdown):
+{{
+  "target_items": ["exact deliverable name from the list"],
+  "adjustment_type": "reduce",
+  "reduction_ratio": 0.7,
+  "reasoning": "brief explanation in English"
+}}
+
+**Examples**:
+
+Request: "Please make the admin dashboard simple and affordable"
+Output: {{"target_items": ["Admin Dashboard"], "adjustment_type": "reduce", "reduction_ratio": 0.7, "reasoning": "simple and affordable implies 30% cost reduction"}}
+
+Request: "For the frontend, keep it simple for initial version, keep cost low"
+Output: {{"target_items": ["Frontend Development"], "adjustment_type": "reduce", "reduction_ratio": 0.7, "reasoning": "simple initial version with low cost"}}
+
+Request: "Reduce testing by 20%"
+Output: {{"target_items": ["Unit Testing", "Integration Testing"], "adjustment_type": "reduce", "reduction_ratio": 0.8, "reasoning": "explicit 20% reduction on testing items"}}
+
+Request: "管理画面をシンプルにして安くしてください"
+Output: {{"target_items": ["Admin Dashboard"], "adjustment_type": "reduce", "reduction_ratio": 0.7, "reasoning": "simple and affordable admin dashboard"}}
+"""
+
+            # Call LLM
+            response = self._call_intent_analysis_llm(prompt)
+
+            print(f"[Intent] AI response (first 200 chars): {response[:200]}")
+
+            # Parse JSON
+            # Try to extract JSON from response (in case AI returns with markdown)
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+                intent = json.loads(json_str)
+
+                print(f"[Intent] ✓ Intent analysis successful:")
+                print(f"[Intent]   target_items={intent.get('target_items')}")
+                print(f"[Intent]   adjustment_type={intent.get('adjustment_type')}")
+                print(f"[Intent]   reduction_ratio={intent.get('reduction_ratio')}")
+                print(f"[Intent]   reasoning={intent.get('reasoning')}")
+
+                return intent
+            else:
+                print(f"[Intent] ✗ Failed to extract JSON from response")
+                return None
+
+        except Exception as e:
+            print(f"[Intent] ✗ Intent analysis failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+    @retry_with_exponential_backoff()
+    def _call_intent_analysis_llm(self, prompt: str, request_id: Optional[str] = None) -> str:
+        """Call LLM for intent analysis with retry logic"""
+        client = openai.OpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            timeout=10  # 10 seconds timeout for intent analysis
+        )
+
+        # Use gpt-4o-mini for fast and cost-effective intent analysis
+        model = "gpt-4o-mini"
+        start_time = time.perf_counter()
+
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "You are an expert project manager. Return only valid JSON, no code blocks, no markdown."},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=300,
+                temperature=0.2,  # Low temperature for consistent results
+                timeout=10
+            )
+            duration = time.perf_counter() - start_time
+
+            # Record successful OpenAI API call metrics
+            metrics_collector.record_openai_call(
+                model=model,
+                tokens=resp.usage.total_tokens,
+                duration=duration,
+                success=True,
+                request_id=request_id or "unknown",
+                operation="intent_analysis",
+                input_tokens=resp.usage.prompt_tokens,
+                output_tokens=resp.usage.completion_tokens
+            )
+
+            logger.debug(
+                "OpenAI API call successful (intent analysis)",
+                request_id=request_id,
+                model=model,
+                tokens=resp.usage.total_tokens,
+                duration=round(duration, 3)
+            )
+
+            return resp.choices[0].message.content.strip()
+
+        except Exception as e:
+            duration = time.perf_counter() - start_time
+
+            # Record failed OpenAI API call metrics
+            metrics_collector.record_openai_call(
+                model=model,
+                tokens=0,
+                duration=duration,
+                success=False,
+                request_id=request_id or "unknown",
+                operation="intent_analysis",
+                input_tokens=0,
+                output_tokens=0
+            )
+
+            logger.error(
+                "OpenAI API call failed (intent analysis)",
+                request_id=request_id,
+                model=model,
+                error=str(e),
+                duration=round(duration, 3)
+            )
+            raise
+
     # --- 自由入力の意図解析と適用（ルールベース） ---
     def _analyze_and_apply(self, estimates: List[Dict[str, Any]], message: str) -> Tuple[List[Dict[str, Any]], str, bool, List[str]]:
+        # Stage 0: AI Intent Analysis (NEW)
+        intent = None
+        targets_from_intent = None
+        reduce_ratio_from_intent = None
+        adjustment_type_from_intent = None
+
+        if _OPENAI_AVAILABLE and getattr(settings, 'OPENAI_API_KEY', None):
+            try:
+                intent = self._analyze_intent_with_ai(message, estimates)
+                if intent and intent.get('target_items'):
+                    targets_from_intent = [item.lower() for item in intent['target_items']]
+                    reduce_ratio_from_intent = intent.get('reduction_ratio')
+                    adjustment_type_from_intent = intent.get('adjustment_type')
+                    print(f"[Intent] ✓ Using AI intent analysis results: targets={targets_from_intent}, ratio={reduce_ratio_from_intent}, type={adjustment_type_from_intent}")
+                else:
+                    print(f"[Intent] ✗ AI intent analysis returned no target items, fallback to keyword matching")
+            except Exception as e:
+                print(f"[Intent] ✗ AI intent analysis failed: {e}, fallback to keyword matching")
+        else:
+            print(f"[Intent] OpenAI unavailable, fallback to keyword matching")
+
+        # Stage 1: Keyword-based analysis (fallback if AI intent analysis failed)
         m = (message or "").lower()
         targets: list[str] = []
         # 全体適用フラグ（「全体」「合計」「すべて」などの語彙を検出）
@@ -184,63 +397,75 @@ class ChatService:
             'all', 'total', 'overall', 'entire', 'everything', 'whole'
         ])
 
-        # ターゲット辞書（大幅に拡張）
-        mapping = {
-            '管理画面': ['管理', '管理画面', 'admin', 'フロント', 'ui', '画面', 'ダッシュボード'],
-            'レポート': ['レポート', '帳票', '出力', '印刷', 'エクスポート'],
-            'api': ['api', 'エンドポイント', 'rest', 'graphql', 'バックエンド', 'サーバ', 'サーバー'],
-            'テスト': ['テスト', '試験', 'test', '検証', 'qa', '品質保証'],
-            '認証': ['認証', 'ログイン', 'login', 'auth', 'セキュリティ', 'セッション', 'パスワード'],
-            'デザイン': ['デザイン', 'design', 'ui', 'ux', 'css', 'スタイル', '見た目'],
-            'インフラ': ['インフラ', 'デプロイ', 'deploy', '環境', '構築', 'サーバ', 'aws', 'クラウド'],
-            'ドキュメント': ['ドキュメント', '資料', '説明', 'マニュアル', '手順書', 'readme'],
-            'データベース': ['データベース', 'db', 'database', 'sql', 'rdb', 'テーブル', 'スキーマ'],
-            '検索': ['検索', 'search', 'サーチ', '全文検索', 'elasticsearch'],
-            '通知': ['通知', 'notification', 'メール', 'mail', 'プッシュ', 'アラート'],
-            '決済': ['決済', 'payment', '課金', '支払', 'クレジット', 'カード'],
-            'バッチ': ['バッチ', 'batch', '定期処理', 'cron', 'ジョブ'],
-        }
-        for key, kws in mapping.items():
-            if any(k in m for k in kws):
-                targets.extend(kws)
-        # デバッグ出力
-        try:
-            print(f"[RB] message='{message}' norm='{m}' targets={targets} apply_to_all={apply_to_all}")
-        except Exception:
-            pass
-        # 変更率の推定
-        reduce_ratio = None
-        # 明示的なパーセンテージ指定（例: 20%下げる/安く）に対応
-        pct_match = re.search(r"([1-9]\d?)\s*[%％]", m)
-        if pct_match and any(k in m for k in ['下げ', '安く', '削減', '減ら', '縮小', '少なく', '減額', 'カット', 'ダウン']):
+        # Fallback to keyword-based matching if AI intent analysis failed
+        if targets_from_intent is None:
+            print(f"[RB] Using keyword-based matching (AI intent analysis unavailable)")
+            # ターゲット辞書（大幅に拡張）
+            mapping = {
+                '管理画面': ['管理', '管理画面', 'admin', 'フロント', 'ui', '画面', 'ダッシュボード'],
+                'レポート': ['レポート', '帳票', '出力', '印刷', 'エクスポート'],
+                'api': ['api', 'エンドポイント', 'rest', 'graphql', 'バックエンド', 'サーバ', 'サーバー'],
+                'テスト': ['テスト', '試験', 'test', '検証', 'qa', '品質保証'],
+                '認証': ['認証', 'ログイン', 'login', 'auth', 'セキュリティ', 'セッション', 'パスワード'],
+                'デザイン': ['デザイン', 'design', 'ui', 'ux', 'css', 'スタイル', '見た目'],
+                'インフラ': ['インフラ', 'デプロイ', 'deploy', '環境', '構築', 'サーバ', 'aws', 'クラウド'],
+                'ドキュメント': ['ドキュメント', '資料', '説明', 'マニュアル', '手順書', 'readme'],
+                'データベース': ['データベース', 'db', 'database', 'sql', 'rdb', 'テーブル', 'スキーマ'],
+                '検索': ['検索', 'search', 'サーチ', '全文検索', 'elasticsearch'],
+                '通知': ['通知', 'notification', 'メール', 'mail', 'プッシュ', 'アラート'],
+                '決済': ['決済', 'payment', '課金', '支払', 'クレジット', 'カード'],
+                'バッチ': ['バッチ', 'batch', '定期処理', 'cron', 'ジョブ'],
+            }
+            for key, kws in mapping.items():
+                if any(k in m for k in kws):
+                    targets.extend(kws)
+            # デバッグ出力
             try:
-                p = float(pct_match.group(1))
-                if 0 < p < 100:
-                    reduce_ratio = max(0.1, 1.0 - (p/100.0))
+                print(f"[RB] message='{message}' norm='{m}' targets={targets} apply_to_all={apply_to_all}")
             except Exception:
                 pass
-        # 言い回しに応じた既定比率（語彙を大幅に拡張 + English keywords）
-        if reduce_ratio is None and any(x in m for x in [
-            '簡便', '簡易', '簡単', 'シンプル', 'ライト', '軽量', 'ミニマム', '最小限', '必要最小',
-            'simple', 'simpler', 'simplified', 'light', 'lightweight', 'minimal', 'minimum', 'basic'
-        ]):
-            reduce_ratio = 0.7  # 30%削減
-        if reduce_ratio is None and any(x in m for x in [
-            '安く', '安価', 'コストダウン', '費用抑', 'コスト削減', 'コストカット', '予算削減', '節約', 'もう少し安', '少し安', '価格を下げ', '値下げ',
-            'affordable', 'cheaper', 'cheap', 'cost down', 'reduce cost', 'cut cost', 'lower cost', 'save money', 'budget friendly', 'economical'
-        ]):
-            reduce_ratio = 0.8  # 20%削減
-        if reduce_ratio is None and any(x in m for x in ['大幅', 'かなり', 'もっと下げ', '大きく下げ', '大きく削減', '大胆', '思い切']):
-            reduce_ratio = 0.6  # 40%削減
-        # 軽度の削減を示す語彙
-        if reduce_ratio is None and any(x in m for x in ['少し下げ', '若干下げ', 'ちょっと下げ', '少しだけ', 'わずかに', '微調整']):
-            reduce_ratio = 0.9  # 10%削減
-        # 中度の削減を示す語彙
-        if reduce_ratio is None and any(x in m for x in ['ある程度', '適度', '程々', 'そこそこ', 'まあまあ']):
-            reduce_ratio = 0.85  # 15%削減
+            # 変更率の推定
+            reduce_ratio = None
+            # 明示的なパーセンテージ指定（例: 20%下げる/安く）に対応
+            pct_match = re.search(r"([1-9]\d?)\s*[%％]", m)
+            if pct_match and any(k in m for k in ['下げ', '安く', '削減', '減ら', '縮小', '少なく', '減額', 'カット', 'ダウン']):
+                try:
+                    p = float(pct_match.group(1))
+                    if 0 < p < 100:
+                        reduce_ratio = max(0.1, 1.0 - (p/100.0))
+                except Exception:
+                    pass
+            # 言い回しに応じた既定比率（語彙を大幅に拡張 + English keywords）
+            if reduce_ratio is None and any(x in m for x in [
+                '簡便', '簡易', '簡単', 'シンプル', 'ライト', '軽量', 'ミニマム', '最小限', '必要最小',
+                'simple', 'simpler', 'simplified', 'light', 'lightweight', 'minimal', 'minimum', 'basic'
+            ]):
+                reduce_ratio = 0.7  # 30%削減
+            if reduce_ratio is None and any(x in m for x in [
+                '安く', '安価', 'コストダウン', '費用抑', 'コスト削減', 'コストカット', '予算削減', '節約', 'もう少し安', '少し安', '価格を下げ', '値下げ',
+                'affordable', 'cheaper', 'cheap', 'cost down', 'reduce cost', 'cut cost', 'lower cost', 'save money', 'budget friendly', 'economical'
+            ]):
+                reduce_ratio = 0.8  # 20%削減
+            if reduce_ratio is None and any(x in m for x in ['大幅', 'かなり', 'もっと下げ', '大きく下げ', '大きく削減', '大胆', '思い切']):
+                reduce_ratio = 0.6  # 40%削減
+            # 軽度の削減を示す語彙
+            if reduce_ratio is None and any(x in m for x in ['少し下げ', '若干下げ', 'ちょっと下げ', '少しだけ', 'わずかに', '微調整']):
+                reduce_ratio = 0.9  # 10%削減
+            # 中度の削減を示す語彙
+            if reduce_ratio is None and any(x in m for x in ['ある程度', '適度', '程々', 'そこそこ', 'まあまあ']):
+                reduce_ratio = 0.85  # 15%削減
 
-        # 完全除外
-        full_remove = any(x in m for x in ['除外', '外す', '不要'])
+            # 完全除外
+            full_remove = any(x in m for x in ['除外', '外す', '不要'])
+        else:
+            # Use AI intent analysis results
+            print(f"[Intent] Using AI intent analysis results (skipping keyword matching)")
+            # Convert AI intent target items to keywords for matching
+            targets = targets_from_intent
+            reduce_ratio = reduce_ratio_from_intent
+            full_remove = (adjustment_type_from_intent == 'remove')
+            # apply_to_all is always False when using AI intent analysis (AI explicitly identifies targets)
+            apply_to_all = False
         try:
             print(f"[RB] reduce_ratio={reduce_ratio} full_remove={full_remove}")
         except Exception:
@@ -251,17 +476,26 @@ class ChatService:
         for e in estimates:
             name = (e.get('deliverable_name') or e.get('name') or '').lower()
 
-            # Word-boundary matching to avoid false matches (e.g., 'ui' in 'requirements')
-            # Priority 1: Exact word match (split by spaces)
-            name_words = set(name.split())
-            word_match = any(t in name_words for t in targets) if targets else False
+            # Matching logic differs based on whether AI intent analysis was used
+            if targets_from_intent is not None:
+                # AI intent analysis: targets contain exact deliverable names
+                # Direct comparison (case-insensitive)
+                match = any(name == t.lower() for t in targets) if targets else False
+                match_type = "ai_exact" if match else "none"
+            else:
+                # Keyword-based matching: targets contain keywords
+                # Word-boundary matching to avoid false matches (e.g., 'ui' in 'requirements')
+                # Priority 1: Exact word match (split by spaces)
+                name_words = set(name.split())
+                word_match = any(t in name_words for t in targets) if targets else False
 
-            # Priority 2: Substring match for keywords >= 4 chars
-            # (fallback for partial words like 'admin' in 'administrator', '管理' in '管理画面')
-            substring_match = any(t in name for t in targets if len(t) >= 4) if targets and not word_match else False
+                # Priority 2: Substring match for keywords >= 4 chars
+                # (fallback for partial words like 'admin' in 'administrator', '管理' in '管理画面')
+                substring_match = any(t in name for t in targets if len(t) >= 4) if targets and not word_match else False
 
-            # 全体適用フラグがtrueの場合、または個別ターゲットにマッチする場合
-            match = apply_to_all or word_match or substring_match
+                # 全体適用フラグがtrueの場合、または個別ターゲットにマッチする場合
+                match = apply_to_all or word_match or substring_match
+                match_type = "word" if word_match else ("substring" if substring_match else "none")
             before_pd = float(e.get('person_days', 0.0))
             before_amt = float(e.get('amount', 0.0))
             pd = before_pd
@@ -282,7 +516,6 @@ class ChatService:
                 if did_change:
                     changed.append((e.get('deliverable_name') or e.get('name'), before_pd, pd, int(before_amt), int(amt)))
                 try:
-                    match_type = "word" if word_match else ("substring" if substring_match else "none")
                     print(f"[RB] item match name='{e.get('deliverable_name') or e.get('name')}' match_type={match_type} before={before_pd}/{int(before_amt)} after={pd}/{int(amt)} changed={did_change}")
                 except Exception:
                     pass
@@ -291,10 +524,14 @@ class ChatService:
             reasoning_breakdown = e.get('reasoning_breakdown') or e.get('reasoning') or ''
             reasoning_notes = e.get('reasoning_notes') or ''
             if did_change and match:
-                adjustment_note = f"【調整】ルールベース適用（{reduce_ratio*100 if reduce_ratio else 0:.0f}%に調整）"
-                if reasoning_notes:
+                # Generate adjustment note using translation
+                percent = reduce_ratio * 100 if reduce_ratio else 0
+                adjustment_note = t('messages.adjustment_note_rule_based').replace('{percent}', f'{percent:.0f}')
+
+                # Check if adjustment note already exists to avoid duplicates
+                if reasoning_notes and adjustment_note not in reasoning_notes:
                     reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
-                else:
+                elif not reasoning_notes:
                     reasoning_notes = adjustment_note
             new_ests.append({
                 'deliverable_name': e.get('deliverable_name') or e.get('name'),
@@ -307,22 +544,8 @@ class ChatService:
             })
 
         if not changed and not targets:
-            # 対象不明: 自動変更は行わず、具体例を提示
-            note = (
-                '対象が特定できなかったため見積りは変更していません。\n'
-                '以下のように、対象と調整内容を具体的にご指示ください。\n'
-                '例) 管理画面を20%下げてください\n'
-                '例) 管理画面を簡易版にして30%削減してください\n'
-                '例) 管理画面は初期リリース対象外にしてください（除外）\n'
-                '例) フロント（UI）を15%下げてください\n'
-                '例) API設計とバックエンド開発をそれぞれ10%下げてください\n'
-                '例) 認証機能は今回は除外してください\n'
-                '例) レポート（帳票）機能を25%下げてください\n'
-                '例) テスト（単体・結合）を20%削減してください\n'
-                '例) 全体を5%下げてください\n'
-                '例) 合計120万円に収まるように調整してください\n'
-                '例) 単価を40,000円/人日に変更してください'
-            )
+            # Target not identified: no changes made, provide examples
+            note = t('messages.target_not_identified')
         elif not changed and targets and reduce_ratio is None and not full_remove:
             # 対象は見つかったが強度が曖昧 → デフォルトで軽減
             factor = 0.85
@@ -341,9 +564,10 @@ class ChatService:
                     reasoning_breakdown = e.get('reasoning_breakdown') or e.get('reasoning') or ''
                     reasoning_notes = e.get('reasoning_notes') or ''
                     adjustment_note = t('messages.adjustment_note_default_reduction')
-                    if reasoning_notes:
+                    # Check if adjustment note already exists to avoid duplicates
+                    if reasoning_notes and adjustment_note not in reasoning_notes:
                         reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
-                    else:
+                    elif not reasoning_notes:
                         reasoning_notes = adjustment_note
                     tmp.append({
                         **e,
@@ -755,7 +979,13 @@ class ChatService:
                     reasoning_notes = est.get('reasoning_notes', est.get('reasoning', ''))
                     reasoning = change.get('reasoning', '')
                     if reasoning:
-                        est['reasoning_notes'] = (reasoning_notes + f"\n\n【調整】{reasoning}").strip()
+                        adjustment_prefix = t('messages.adjustment_prefix')
+                        adjustment_with_reasoning = f"{adjustment_prefix}{reasoning}"
+                        # Check if adjustment note already exists to avoid duplicates
+                        if reasoning_notes and adjustment_with_reasoning not in reasoning_notes:
+                            est['reasoning_notes'] = (reasoning_notes + f"\n\n{adjustment_with_reasoning}").strip()
+                        elif not reasoning_notes:
+                            est['reasoning_notes'] = adjustment_with_reasoning.strip()
 
                     found = True
                     break
@@ -832,7 +1062,7 @@ class ChatService:
         else:
             rows = self._load_estimates(task_id)
             if not rows:
-                return {"reply_md": "まだ見積りが作成されていません。まずはExcelをアップロードして実行してください。"}
+                return {"reply_md": t('messages.estimate_not_created')}
             ests = self._as_dicts(rows)
 
         # --- 提案適用リクエストの処理 ---
@@ -890,8 +1120,14 @@ class ChatService:
             )
 
             if proposals:
-                direction_text = '削減' if adjustment_request['direction'] == 'reduce' else '増額'
-                reply_md = f"約{adjustment_request['amount']:,}円の{direction_text}案を3つご提案いたします。\n\n以下から最適な案をお選びください。"
+                # Get direction text using translation
+                direction_text = t('messages.direction_reduce') if adjustment_request['direction'] == 'reduce' else t('messages.direction_increase')
+                # Generate proposal message using translation
+                reply_md = t('messages.proposal_generated').replace(
+                    '{amount}', f'{adjustment_request["amount"]:,}'
+                ).replace(
+                    '{direction}', direction_text
+                )
 
                 # Auto-separate estimates before returning
                 from app.utils.reasoning_separator import auto_separate_reasoning
@@ -931,7 +1167,8 @@ class ChatService:
                         "reasoning_notes": notes,
                     })
 
-                reply_md = "提案の生成に失敗しました。従来の調整方法をお試しください。"
+                # Generate error message using translation
+                reply_md = t('messages.proposal_generation_failed')
                 return {
                     "reply_md": reply_md,
                     "estimates": separated_ests,
@@ -1080,10 +1317,11 @@ class ChatService:
                                     reasoning_breakdown = e.get("reasoning_breakdown") or (current_est.get("reasoning_breakdown") if current_est else None) or e.get("reasoning") or ""
                                     reasoning_notes = e.get("reasoning_notes") or (current_est.get("reasoning_notes") if current_est else None) or ""
                                     # Add AI adjustment note
-                                    adjustment_note = "【調整】AI提案を適用"
-                                    if reasoning_notes:
+                                    adjustment_note = t('messages.adjustment_note_ai_proposal')
+                                    # Check if adjustment note already exists to avoid duplicates
+                                    if reasoning_notes and adjustment_note not in reasoning_notes:
                                         reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
-                                    else:
+                                    elif not reasoning_notes:
                                         reasoning_notes = adjustment_note
                                     norm.append({
                                         "deliverable_name": deliverable_name,

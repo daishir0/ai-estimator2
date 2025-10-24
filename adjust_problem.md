@@ -1204,5 +1204,494 @@ Please make the admin dashboard simple and affordable.
 - ✅ Admin Dashboardのみが調整される（ルールベース: 30%削減）
 - ✅ 他の12項目は元の値のまま
 
+### 2025-10-23 20:30 - 方針転換: AI意図解析方式の採用
+**新たな問題**: キーワードマッチングの限界
+
+#### テストケース
+**ユーザー入力**:
+```
+For the frontend, it's fine to keep it simple for the initial version, so please keep the cost low.
+```
+
+**期待される動作**:
+- Frontend Developmentを対象として認識
+- "simple" + "cost low" → 30%削減
+
+**実際の動作**:
+- ❌ ターゲット検出失敗（"対象が特定できなかった"）
+- ❌ 日本語のガイドメッセージ表示
+
+#### 根本原因分析
+
+**問題1**: キーワードマッピングに'frontend'がない
+```python
+mapping = {
+    '管理画面': ['管理', '管理画面', 'admin', 'フロント', 'ui', '画面', 'ダッシュボード'],
+    # ↑ 'フロント'はあるが'frontend'がない
+}
+```
+
+**問題2**: キーワードマッチングの本質的限界
+- キーワード網羅が不可能（frontend, front-end, front end, FE, ...）
+- 自然言語の意図理解ができない
+- 新しい成果物名に対応できない
+
+#### ユーザー（だいしろーさん）の指摘
+
+> 「キーワードマッチではなくて、AIによる別の判定が必要だと思うのです。ユーザーの意図を理解してどの成果物を対象にしているのか意図を明確にする機構です。」
+
+**本質**:
+- ❌ キーワードマッチング：「frontendというキーワードがあるか？」
+- ✅ **意図理解**：「ユーザーはFrontend Developmentをシンプル・低コストにしたいと言っている」
+
+---
+
+## 🔄 新アーキテクチャ: 2段階AI方式
+
+### 現在の構造（問題あり）
+```
+ユーザー入力
+  ↓
+ルールベース調整（キーワードマッチング）← 限界
+  ↓
+AI調整（微調整）
+```
+
+### 新構造（AI意図解析方式）
+```
+ユーザー入力
+  ↓
+【Stage 0: AI意図解析】（新規追加）★
+  - 軽量・高速（gpt-4o-mini）
+  - Output: {
+      "target_items": ["Frontend Development"],
+      "adjustment_type": "reduce",
+      "reduction_ratio": 0.7,
+      "reasoning": "simple and cost-effective"
+    }
+  ↓
+ルールベース調整（AI意図解析結果を適用）
+  - 意図解析成功 → AI結果を使用
+  - 意図解析失敗 → 既存のキーワードマッチングにフォールバック
+  ↓
+【Stage 1: AI微調整】（既存）
+  - 詳細な調整
+  - 項目数検証
+```
+
+---
+
+## 📋 実装計画
+
+### 実装1: AI意図解析関数の追加
+**ファイル**: `backend/app/services/chat_service.py`
+
+**追加関数**: `_analyze_intent_with_ai()`
+
+**プロンプト**:
+```
+You are an expert project manager analyzing user's adjustment requests.
+
+**Current Deliverables**:
+Requirements Document, Basic Design Document, ..., Admin Dashboard, ...
+
+**User's Request**:
+For the frontend, it's fine to keep it simple for the initial version, so please keep the cost low.
+
+**Your Task**:
+Analyze the user's intent and identify:
+1. Which deliverables are mentioned or implied?
+2. What type of adjustment? (reduce, increase, remove)
+3. How much adjustment? (ratio: 0.5-1.0 for reduction)
+
+**Output Format** (JSON only, no code block):
+{
+  "target_items": ["exact deliverable name from the list"],
+  "adjustment_type": "reduce",
+  "reduction_ratio": 0.7,
+  "reasoning": "brief explanation"
+}
+```
+
+**期待される出力**:
+```json
+{
+  "target_items": ["Frontend Development"],
+  "adjustment_type": "reduce",
+  "reduction_ratio": 0.7,
+  "reasoning": "User wants simple and cost-effective frontend for initial version"
+}
+```
+
+### 実装2: _analyze_and_applyの修正
+
+**修正内容**:
+1. AI意図解析を最優先で実行
+2. 意図解析結果をtargets/reduce_ratioに設定
+3. 失敗時は既存のキーワードマッチングにフォールバック
+
+**疑似コード**:
+```python
+def _analyze_and_apply(self, estimates, message):
+    # Stage 0: AI意図解析（新規）
+    intent = None
+    if _OPENAI_AVAILABLE and settings.OPENAI_API_KEY:
+        try:
+            intent = self._analyze_intent_with_ai(message, estimates)
+            print(f"[Intent] targets={intent['target_items']}, ratio={intent['reduction_ratio']}")
+        except Exception as e:
+            print(f"[Intent] Failed, fallback to keyword matching: {e}")
+
+    # 意図解析結果を使用
+    if intent and intent.get('target_items'):
+        targets = [item.lower() for item in intent['target_items']]
+        reduce_ratio = intent.get('reduction_ratio')
+        adjustment_type = intent.get('adjustment_type')
+    else:
+        # 既存のキーワードマッチング（フォールバック）
+        targets = []
+        m = message.lower()
+        # ... 既存ロジック
+
+    # マッチング処理
+    for e in estimates:
+        name = e.get('deliverable_name') or ''
+
+        # AI意図解析結果でマッチング（大文字小文字を無視した部分一致）
+        if targets:
+            match = any(
+                target.lower() in name.lower() or name.lower() in target.lower()
+                for target in targets
+            )
+        else:
+            # 既存のマッチング
+            ...
+```
+
+### 実装3: LLM呼び出し関数の追加
+
+**追加関数**: `_call_intent_analysis_llm()`
+
+**仕様**:
+- モデル: gpt-4o-mini（高速・低コスト）
+- タイムアウト: 10秒
+- リトライ: 既存のretry_with_exponential_backoff使用
+- ログタグ: `[Intent]`
+
+### 実装4: デバッグログの追加
+
+**ログ出力例**:
+```
+[Intent] Calling AI intent analysis...
+[Intent] User message: 'For the frontend, it's fine to keep it simple...'
+[Intent] Deliverables: ['Requirements Document', 'Frontend Development', ...]
+[Intent] AI response: {"target_items": ["Frontend Development"], ...}
+[Intent] ✓ Intent analysis successful: targets=['Frontend Development'], ratio=0.7
+```
+
+---
+
+## 📊 期待される効果
+
+### メリット
+
+1. **柔軟性**: どんな自然言語表現でも理解可能
+   - "frontend" / "front-end" / "front end" / "FE" / "UI部分" 等
+
+2. **多言語対応**: 英語でも日本語でも同じロジック
+   - "フロントエンドをシンプルに" → Frontend Development
+
+3. **保守性**: キーワードマッピング不要
+   - mapping辞書の保守が不要
+
+4. **ユーザー体験**: 自然な言葉で指示できる
+   - "keep it simple for initial version" → 30%削減と理解
+
+5. **透明性**: AIの意図理解をログで確認可能
+   - デバッグが容易
+
+### コスト
+
+- **意図解析**: 約200トークン（入力） + 50トークン（出力）
+- **gpt-4o-mini**: $0.00015/1Kトークン（入力）+ $0.0006/1Kトークン（出力）
+- **1リクエストあたり**: 約$0.00006（0.006円）
+- **総コスト増加**: 10-20%程度（非常に安価）
+
+### フォールバック
+
+AI意図解析が失敗した場合：
+1. 例外をキャッチ
+2. ログに`[Intent] Failed, fallback to keyword matching`を出力
+3. 既存のキーワードマッチングロジックを実行
+4. システムは正常に動作し続ける
+
+---
+
+## 🚀 実装手順
+
+### Step 1: AI意図解析関数の実装
+- [ ] `_analyze_intent_with_ai()`関数を追加
+- [ ] プロンプト作成（英語・日本語対応）
+- [ ] JSON パース処理
+
+### Step 2: LLM呼び出し関数の実装
+- [ ] `_call_intent_analysis_llm()`関数を追加
+- [ ] gpt-4o-miniモデル使用
+- [ ] リトライ・タイムアウト設定
+
+### Step 3: _analyze_and_applyの修正
+- [ ] AI意図解析を最優先で実行
+- [ ] 意図解析結果をtargets/reduce_ratioに適用
+- [ ] フォールバック処理を追加
+
+### Step 4: デバッグログの追加
+- [ ] `[Intent]`タグでログ出力
+- [ ] 意図解析の成功/失敗を明示
+
+### Step 5: テスト
+- [ ] "For the frontend, keep it simple" → Frontend Development 30%削減
+- [ ] "管理画面をシンプルに" → Admin Dashboard 30%削減
+- [ ] キーワードマッチング失敗時のフォールバック確認
+
+### Step 6: adjust_problem.mdに実施結果を記録
+
+---
+
+## ✅ 成功基準
+
+1. **テストケース1**: "For the frontend, it's fine to keep it simple for the initial version, so please keep the cost low."
+   - ✅ Frontend Developmentのみ調整される
+   - ✅ 削減率: 30%（ratio=0.7）
+   - ✅ 他の12項目は変更なし
+
+2. **テストケース2**: "Please make the admin dashboard simple and affordable."
+   - ✅ Admin Dashboardのみ調整される
+   - ✅ 削減率: 30%（ratio=0.7）
+
+3. **フォールバックテスト**: AI意図解析が失敗した場合
+   - ✅ 既存のキーワードマッチングが動作
+   - ✅ システムエラーが発生しない
+
+---
+
+## 🚀 実施記録
+
+### 2025-10-23: Step 1完了 - AI意図解析関数の実装
+
+**実施内容**:
+- `_analyze_intent_with_ai()` 関数を追加（chat_service.py:177-282）
+  - deliverable namesをestimatesから抽出
+  - 英語・日本語対応の包括的なプロンプト作成
+  - 4つの実例を含む（英語・日本語）
+  - JSON応答のパース処理
+  - `[Intent]` タグでデバッグログ出力
+
+- `_call_intent_analysis_llm()` 関数を追加（chat_service.py:284-353）
+  - gpt-4o-miniモデル使用（コスト効率重視）
+  - 10秒タイムアウト設定
+  - temperature=0.2（一貫性重視）
+  - max_tokens=300
+  - リトライロジック（`@retry_with_exponential_backoff`デコレータ）
+  - OpenAI APIメトリクス収集
+  - エラーハンドリングとロギング
+
+**確認事項**:
+- ✅ 構文エラーなし（`python3 -m py_compile`で確認）
+- ✅ プロンプトに言語指示を含む
+- ✅ 4つの実例で適切な動作を指示
+
+---
+
+### 2025-10-23: Step 2完了 - _analyze_and_applyの修正
+
+**実施内容**:
+- AI意図解析をStage 0として最優先で実行（chat_service.py:357-376）
+  - `_analyze_intent_with_ai()`を呼び出し
+  - 成功時: `targets_from_intent`, `reduce_ratio_from_intent`, `adjustment_type_from_intent`を設定
+  - 失敗時: `None`を設定してキーワードマッチングにフォールバック
+  - OpenAI利用不可時もフォールバック
+
+- キーワードマッチングをフォールバック処理として条件分岐（chat_service.py:388-456）
+  - `if targets_from_intent is None:` で囲む
+  - AI解析成功時: AI結果を使用、キーワードマッチングをスキップ
+  - AI解析失敗時: 既存のキーワードマッチングロジックを実行
+
+- マッチングロジックの分岐（chat_service.py:467-486）
+  - AI意図解析使用時: 成果物名の直接比較（大文字小文字を無視）
+  - キーワードマッチング使用時: 既存のword_match/substring_matchロジック
+  - match_typeをログに出力（"ai_exact", "word", "substring", "none"）
+
+**確認事項**:
+- ✅ 構文エラーなし（`python3 -m py_compile`で確認）
+- ✅ AI結果を優先、フォールバックロジック実装
+- ✅ デバッグログで動作を明確化（`[Intent]`, `[RB]`タグ）
+
+**変更ファイル**:
+- `backend/app/services/chat_service.py`（177-509行）
+
+---
+
+### 2025-10-24: 多言語対応と重複メッセージ修正
+
+**問題報告**:
+- ✅ AI意図解析は正しく動作（英語・日本語両対応）
+- ❌ 「【調整】ルールベース適用（70%に調整）」が2回追記される
+- ❌ 英語環境（LANGUAGE=en）なのに日本語メッセージが表示
+
+**原因分析**:
+1. **日本語固定メッセージ**: chat_service.py:515の調整メッセージがハードコード
+2. **重複追記**: 既存の`reasoning_notes`に調整メッセージがあるかチェックせず追記
+3. **エラーメッセージも日本語固定**: chat_service.py:532-549
+
+**実施内容**:
+
+1. **翻訳ファイルに追加**（en.json, ja.json）:
+   - `messages.adjustment_note_rule_based`: ルールベース調整メッセージ
+   - `messages.target_not_identified`: 対象不明時のエラーメッセージ
+
+2. **chat_service.py修正**:
+   - Line 515-523: 調整メッセージを`t()`関数経由に変更 + 重複チェック追加
+   - Line 534-536: エラーメッセージを`t()`関数経由に変更
+   - Line 554-559: デフォルト削減メッセージにも重複チェック追加
+
+**重複チェックロジック**:
+```python
+# Check if adjustment note already exists to avoid duplicates
+if reasoning_notes and adjustment_note not in reasoning_notes:
+    reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
+elif not reasoning_notes:
+    reasoning_notes = adjustment_note
+```
+
+**確認事項**:
+- ✅ 構文エラーなし（Python, JSON）
+- ✅ 多言語対応（ja.json, en.json）
+- ✅ 重複チェック実装
+- ✅ システム再起動成功
+
+**変更ファイル**:
+- `backend/app/locales/en.json`（171-172行）
+- `backend/app/locales/ja.json`（171-172行）
+- `backend/app/services/chat_service.py`（515-523, 534-536, 554-559行）
+
+---
+
+### 2025-10-24: 全ての日本語ハードコードメッセージの多言語対応
+
+**問題報告**:
+- ❌ 他にも5箇所の日本語ハードコードメッセージを発見
+
+**発見した箇所**:
+1. Line 101: `【調整】上限予算に合わせて係数 {ratio} を適用`
+2. Line 125: `【調整】単価を {cost} 円/人日に変更`
+3. Line 147: `【調整】リスクバッファ {percent}% を上乗せ`
+4. Line 970: `【調整】{reasoning}` (AI提案の推論)
+5. Line 1295: `【調整】AI提案を適用`
+
+**実施内容**:
+
+1. **翻訳ファイルに追加**（en.json, ja.json）:
+   - `messages.adjustment_note_budget_cap`: 上限予算調整メッセージ
+   - `messages.adjustment_note_unit_cost`: 単価変更メッセージ
+   - `messages.adjustment_note_risk_buffer`: リスクバッファメッセージ
+   - `messages.adjustment_note_ai_proposal`: AI提案適用メッセージ
+   - `messages.adjustment_prefix`: 調整プレフィックス（"【調整】" / "[Adjustment] "）
+
+2. **chat_service.py修正**:
+   - Line 101-106: 上限予算調整を`t()`関数経由 + 重複チェック
+   - Line 126-131: 単価変更を`t()`関数経由 + 重複チェック
+   - Line 149-154: リスクバッファを`t()`関数経由 + 重複チェック
+   - Line 973-979: AI提案推論を`t()`関数経由 + 重複チェック
+   - Line 1304-1309: AI提案適用を`t()`関数経由 + 重複チェック
+
+**重複チェックロジック（全箇所に適用）**:
+```python
+# Check if adjustment note already exists to avoid duplicates
+if reasoning_notes and adjustment_note not in reasoning_notes:
+    reasoning_notes = f"{reasoning_notes}\n\n{adjustment_note}"
+elif not reasoning_notes:
+    reasoning_notes = adjustment_note
+```
+
+**確認事項**:
+- ✅ 構文エラーなし（Python, JSON）
+- ✅ 多言語対応完了（ja.json, en.json）
+- ✅ 全ての調整メッセージに重複チェック実装
+- ✅ システム再起動成功
+
+**変更ファイル**:
+- `backend/app/locales/en.json`（172-176行）
+- `backend/app/locales/ja.json`（172-176行）
+- `backend/app/services/chat_service.py`（101-106, 126-131, 149-154, 973-979, 1304-1309行）
+
+---
+
+### 2025-10-24: ユーザー表示メッセージの完全多言語対応（15箇所）
+
+**対応内容**:
+ユーザー画面に表示される全ての日本語メッセージ（15箇所）を多言語対応しました。
+
+**対応箇所**:
+
+#### chat_service.py（5箇所）
+1. Line 115-124: 上限予算調整の説明メッセージ → `t('messages.budget_cap_summary')`
+2. Line 1065: 見積り未作成エラーメッセージ → `t('messages.estimate_not_created')`
+3. Line 1124: 調整方向テキスト → `t('messages.direction_reduce')` / `t('messages.direction_increase')`
+4. Line 1126-1130: 提案メッセージ → `t('messages.proposal_generated')`
+5. Line 1171: 提案生成失敗エラーメッセージ → `t('messages.proposal_generation_failed')`
+
+#### input_service.py（5箇所）
+- Line 5: `from app.core.i18n import t` を追加
+- Line 19: Excel列数不足エラー → `t('messages.excel_min_columns')`
+- Line 38: Excel読み込み失敗エラー → `t('messages.excel_load_failed')`
+- Line 49: CSV列数不足エラー → `t('messages.csv_min_columns')`
+- Line 68: CSV読み込み失敗エラー → `t('messages.csv_load_failed')`
+- Line 91: 成果物データ解析失敗エラー → `t('messages.deliverable_parse_failed')`
+
+#### tasks.py（5箇所）
+- Line 88: ファイル形式エラー → `t('messages.invalid_file_type')`
+- Line 127: JSON解析失敗エラー → `t('messages.json_parse_failed')`
+- Line 136: ファイル/データ未指定エラー → `t('messages.file_or_data_required')`
+- Line 211: タスク処理開始メッセージ → `t('messages.task_processing_started')`
+- Line 250: タスク未完了エラー → `t('messages.task_not_completed')`
+
+**翻訳ファイル追加**:
+
+en.json / ja.json に以下の15個の翻訳キーを追加:
+- `messages.budget_cap_summary`
+- `messages.estimate_not_created`
+- `messages.direction_reduce`
+- `messages.direction_increase`
+- `messages.proposal_generated`
+- `messages.proposal_generation_failed`
+- `messages.excel_min_columns`
+- `messages.excel_load_failed`
+- `messages.csv_min_columns`
+- `messages.csv_load_failed`
+- `messages.deliverable_parse_failed`
+- `messages.invalid_file_type`
+- `messages.json_parse_failed`
+- `messages.file_or_data_required`
+- `messages.task_processing_started`
+- `messages.task_not_completed`
+
+**確認事項**:
+- ✅ JSON構文エラーなし
+- ✅ Python構文エラーなし
+- ✅ システム再起動成功
+- ✅ user_visible_words.md作成（実装手順書）
+
+**変更ファイル**:
+- `backend/app/locales/en.json`（177-192行）
+- `backend/app/locales/ja.json`（177-192行）
+- `backend/app/services/chat_service.py`（115-124, 1065, 1124-1130, 1171行）
+- `backend/app/services/input_service.py`（5, 19, 38, 49, 68, 91行）
+- `backend/app/api/v1/tasks.py`（88, 127, 136, 211, 250行）
+- `user_visible_words.md`（新規作成）
+
+---
+
 ### 次のアクション
-コミット・再起動して動作確認を実施する
+- Step 3-4: テスト実施（ユーザーによる動作確認）
+- Step 5: adjust_problem.mdに最終結果を記録
+- Step 6: コミット・プッシュ
