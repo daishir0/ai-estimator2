@@ -528,7 +528,6 @@ LLMの役割はテキスト生成のみに限定されています。
 - [OWASP LLM Top 10 日本語版](https://owasp.org/www-project-top-10-for-large-language-model-applications/llm-top-10-governance-doc/LLM_AI_Security_and_Governance_Checklist-v1.pdf)
 - `TODO/Guardrails-detail.md` - Guardrails実装詳細
 - `TODO/Security-detail.md` - セキュリティリスク対応詳細
-- `/home/your-username/your-project-dir/02_pj-ReadyTensor/output/doc/34_autonomy-meets-attack-securing-agentic-ai-from-real-world-exploits-aaidc-week9-lesson3.md`
 
 ---
 

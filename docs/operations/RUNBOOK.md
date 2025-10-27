@@ -77,7 +77,7 @@ curl -s http://127.0.0.1:8100/health
 {"status":"healthy"}
 
 # 本番環境ヘルスチェック
-curl -u username:password https://estimator.path-finder.jp/api/v1/health
+curl -u username:password https://your-domain.com/api/v1/health
 ```
 
 **判定基準**:
@@ -787,7 +787,7 @@ sudo certbot renew
 sudo systemctl reload httpd
 
 # 3. SSL確認
-echo | openssl s_client -connect estimator.path-finder.jp:443 2>/dev/null | \
+echo | openssl s_client -connect your-domain.com:443 2>/dev/null | \
   openssl x509 -noout -dates
 ```
 

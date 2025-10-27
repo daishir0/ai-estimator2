@@ -54,7 +54,7 @@ Internet (HTTPS/HTTP)
 ┌───────────────────────────┐
 │ FastAPI Application       │
 │  - Python 3.11            │
-│  - conda環境: 311         │
+│  - conda環境: your-python-env │
 │  - 多言語対応 (ja/en)     │
 └───────────────────────────┘
     │
@@ -77,15 +77,15 @@ Internet (HTTPS/HTTP)
 - リバースプロキシ（バックエンドへのルーティング）
 - HTTP→HTTPSリダイレクト
 
-**設定ファイル**: `/etc/httpd/conf.d/estimator.path-finder.jp.conf`
+**設定ファイル**: `/etc/httpd/conf.d/your-domain.com.conf`
 
 **主要設定**:
 ```apache
 <VirtualHost *:443>
-    ServerName estimator.path-finder.jp
+    ServerName your-domain.com
     SSLEngine on
-    SSLCertificateFile /etc/letsencrypt/live/path-finder.jp/fullchain.pem
-    SSLCertificateKeyFile /etc/letsencrypt/live/path-finder.jp/privkey.pem
+    SSLCertificateFile /etc/letsencrypt/live/your-domain.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/your-domain.com/privkey.pem
 
     ProxyTimeout 600
 
@@ -107,7 +107,7 @@ Internet (HTTPS/HTTP)
 </VirtualHost>
 
 <VirtualHost *:80>
-    ServerName estimator.path-finder.jp
+    ServerName your-domain.com
     RewriteEngine On
     RewriteCond %{HTTPS} !=on
     RewriteRule ^/?(.*) https://%{SERVER_NAME}/ [R=301,L]
@@ -185,7 +185,7 @@ uvicorn app.main:app \
 - OpenAI API連携
 
 **Python環境**:
-- Python 3.11 (conda環境: 311)
+- Python 3.11 (conda環境: your-python-env)
 - フレームワーク: FastAPI
 - ORM: SQLAlchemy 2.0
 - データベース: SQLite3
@@ -313,7 +313,7 @@ LANGUAGE=ja
 # Server
 HOST=127.0.0.1
 PORT=8100
-CORS_ORIGINS=https://estimator.path-finder.jp
+CORS_ORIGINS=https://your-domain.com
 ```
 
 ### 環境変数詳細
@@ -334,7 +334,7 @@ CORS_ORIGINS=https://estimator.path-finder.jp
 | `LANGUAGE` | システム言語 (ja/en) | `ja` | ✓ |
 | `HOST` | Uvicornバインドホスト | `127.0.0.1` | ✓ |
 | `PORT` | Uvicornポート | `8100` | ✓ |
-| `CORS_ORIGINS` | CORS許可オリジン | `https://estimator.path-finder.jp` | ✓ |
+| `CORS_ORIGINS` | CORS許可オリジン | `https://your-domain.com` | ✓ |
 
 ### 環境変数の注意事項
 
@@ -389,8 +389,8 @@ sudo chown root:root /etc/httpd/.htpasswd_estimator
 ### SSL/TLS証明書
 
 **証明書パス**:
-- フルチェーン: `/etc/letsencrypt/live/path-finder.jp/fullchain.pem`
-- 秘密鍵: `/etc/letsencrypt/live/path-finder.jp/privkey.pem`
+- フルチェーン: `/etc/letsencrypt/live/your-domain.com/fullchain.pem`
+- 秘密鍵: `/etc/letsencrypt/live/your-domain.com/privkey.pem`
 
 **自動更新** (certbot):
 ```bash
@@ -462,7 +462,7 @@ curl -s http://127.0.0.1:8100/health
 {"status":"healthy"}
 
 # 本番環境ヘルスチェック（Basic認証が必要）
-curl -u username:password https://estimator.path-finder.jp/api/v1/health
+curl -u username:password https://your-domain.com/api/v1/health
 ```
 
 ### 4. 完全な起動順序
@@ -508,7 +508,7 @@ cd 09_pj-見積り作成システム/output3/backend
 ```bash
 # conda環境作成
 source /path/to/python/bin/activate
-conda create -n 311 python=3.11
+conda create -n your-python-env python=3.11
 conda activate your-python-env
 
 # 依存関係インストール
@@ -563,7 +563,7 @@ sudo systemctl start estimator
 
 ```bash
 # 設定ファイル配置
-sudo cp /path/to/estimator.path-finder.jp.conf /etc/httpd/conf.d/
+sudo cp /path/to/your-domain.com.conf /etc/httpd/conf.d/
 
 # 設定テスト
 sudo apachectl configtest
@@ -586,7 +586,7 @@ sudo chmod 644 /etc/httpd/.htpasswd_estimator
 
 ```bash
 # certbotで証明書取得（初回のみ）
-sudo certbot certonly --webroot -w /var/www/html -d estimator.path-finder.jp
+sudo certbot certonly --webroot -w /var/www/html -d your-domain.com
 
 # 自動更新設定
 sudo crontab -e
@@ -601,7 +601,7 @@ sudo crontab -e
 curl -s http://127.0.0.1:8100/health
 
 # 本番確認
-curl -u username:password https://estimator.path-finder.jp/api/v1/health
+curl -u username:password https://your-domain.com/api/v1/health
 ```
 
 ### 更新デプロイ
@@ -660,7 +660,7 @@ journalctl -u estimator -n 50
 curl -s http://127.0.0.1:8100/health
 
 # APIテスト
-curl -u username:password https://estimator.path-finder.jp/api/v1/translations
+curl -u username:password https://your-domain.com/api/v1/translations
 ```
 
 ---
@@ -722,7 +722,7 @@ sudo systemctl restart estimator
 
 ```bash
 # バックアップから復元
-sudo cp /etc/httpd/conf.d/estimator.path-finder.jp.conf.backup /etc/httpd/conf.d/estimator.path-finder.jp.conf
+sudo cp /etc/httpd/conf.d/your-domain.com.conf.backup /etc/httpd/conf.d/your-domain.com.conf
 
 # 設定テスト
 sudo apachectl configtest
@@ -801,7 +801,7 @@ AWS ELB/ALB
 1. **データベース**: `backend/app.db`
 2. **環境変数**: `backend/.env`
 3. **アップロードファイル**: `backend/uploads/`
-4. **Apache設定**: `/etc/httpd/conf.d/estimator.path-finder.jp.conf`
+4. **Apache設定**: `/etc/httpd/conf.d/your-domain.com.conf`
 5. **systemd設定**: `/etc/systemd/system/estimator.service`
 
 ### 手動バックアップ
@@ -828,8 +828,8 @@ cp -r /path/to/ai-estimator2/backend/uploads \
    $BACKUP_DIR/$TIMESTAMP/
 
 # Apache設定
-sudo cp /etc/httpd/conf.d/estimator.path-finder.jp.conf \
-   $BACKUP_DIR/$TIMESTAMP/estimator.path-finder.jp.conf
+sudo cp /etc/httpd/conf.d/your-domain.com.conf \
+   $BACKUP_DIR/$TIMESTAMP/your-domain.com.conf
 
 # systemd設定
 sudo cp /etc/systemd/system/estimator.service \
@@ -920,7 +920,7 @@ sudo tail -f /var/log/httpd/estimator_error.log
 curl -s http://127.0.0.1:8100/health
 
 # 本番ヘルスチェック
-curl -u username:password https://estimator.path-finder.jp/api/v1/health
+curl -u username:password https://your-domain.com/api/v1/health
 
 # ステータスコードのみ確認
 curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8100/health
@@ -1034,7 +1034,7 @@ source /path/to/python/bin/activate
 conda env list
 
 # 環境が無い場合は作成
-conda create -n 311 python=3.11
+conda create -n your-python-env python=3.11
 conda activate your-python-env
 pip install -r requirements.txt
 

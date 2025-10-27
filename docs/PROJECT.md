@@ -42,7 +42,7 @@
 | **言語対応** | 日本語・英語 (切り替え可能) |
 | **ライセンス** | MIT License |
 | **リポジトリ** | https://github.com/daishir0/ai-estimator2 |
-| **本番URL** | https://estimator.path-finder.jp/ |
+| **本番URL** | https://your-domain.com/ |
 
 ---
 
@@ -497,7 +497,7 @@ git clone https://github.com/daishir0/ai-estimator2.git
 cd ai-estimator2/backend
 
 # 2. Python環境セットアップ
-conda create -n 311 python=3.11
+conda create -n your-python-env python=3.11
 conda activate your-python-env
 pip install -r requirements.txt
 
@@ -573,7 +573,7 @@ The **AI Estimator System** is a web application that automatically generates pr
 | **Language Support** | Japanese & English (switchable) |
 | **License** | MIT License |
 | **Repository** | https://github.com/daishir0/ai-estimator2 |
-| **Production URL** | https://estimator.path-finder.jp/ |
+| **Production URL** | https://your-domain.com/ |
 
 ---
 
@@ -684,7 +684,7 @@ git clone https://github.com/daishir0/ai-estimator2.git
 cd ai-estimator2/backend
 
 # 2. Python environment setup
-conda create -n 311 python=3.11
+conda create -n your-python-env python=3.11
 conda activate your-python-env
 pip install -r requirements.txt
 

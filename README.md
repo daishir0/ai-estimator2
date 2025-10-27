@@ -110,7 +110,7 @@ OPENAI_MODEL=gpt-4o-mini
 DATABASE_URL=sqlite:///./app.db
 
 # Server Configuration
-CORS_ORIGINS=http://localhost:8000,https://estimator.path-finder.jp
+CORS_ORIGINS=http://localhost:8000,https://your-domain.com
 API_V1_STR=/api/v1
 
 # File Upload
@@ -169,7 +169,7 @@ sudo systemctl start estimator.service
 
 - Web UI: http://localhost:8000/ui
 - API Documentation: http://localhost:8000/docs
-- Production URL: https://estimator.path-finder.jp/
+- Production URL: https://your-domain.com/
 
 ## Usage
 
@@ -395,7 +395,7 @@ OPENAI_MODEL=gpt-4o-mini
 DATABASE_URL=sqlite:///./app.db
 
 # サーバー設定
-CORS_ORIGINS=http://localhost:8000,https://estimator.path-finder.jp
+CORS_ORIGINS=http://localhost:8000,https://your-domain.com
 API_V1_STR=/api/v1
 
 # ファイルアップロード
@@ -454,7 +454,7 @@ sudo systemctl start estimator.service
 
 - Web UI: http://localhost:8000/ui
 - APIドキュメント: http://localhost:8000/docs
-- 本番環境URL: https://estimator.path-finder.jp/
+- 本番環境URL: https://your-domain.com/
 
 ## 使い方
 

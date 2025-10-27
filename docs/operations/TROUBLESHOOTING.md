@@ -96,7 +96,7 @@ source /path/to/python/bin/activate
 conda env list
 
 # 環境が無い場合は作成
-conda create -n 311 python=3.11
+conda create -n your-python-env python=3.11
 conda activate your-python-env
 pip install -r backend/requirements.txt
 
@@ -252,7 +252,7 @@ sudo systemctl reload httpd
 sudo certbot certificates
 
 # または
-echo | openssl s_client -connect estimator.path-finder.jp:443 2>/dev/null | \
+echo | openssl s_client -connect your-domain.com:443 2>/dev/null | \
   openssl x509 -noout -dates
 ```
 
@@ -327,7 +327,7 @@ grep -r "timeout" backend/.env
 **対処**:
 ```bash
 # Apache設定変更
-sudo nano /etc/httpd/conf.d/estimator.path-finder.jp.conf
+sudo nano /etc/httpd/conf.d/your-domain.com.conf
 
 # ProxyTimeout を延長
 ProxyTimeout 900
@@ -521,7 +521,7 @@ sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
 **確認**:
 ```bash
 # レスポンスタイム測定
-time curl -u user:pass https://estimator.path-finder.jp/api/v1/health
+time curl -u user:pass https://your-domain.com/api/v1/health
 ```
 
 **対処**:
@@ -630,7 +630,7 @@ route -n
 **確認**:
 ```bash
 # 証明書チェーン確認
-openssl s_client -connect estimator.path-finder.jp:443 -showcerts
+openssl s_client -connect your-domain.com:443 -showcerts
 ```
 
 **対処**:

@@ -16,7 +16,7 @@
 ### Base URL
 
 ```
-https://estimator.path-finder.jp/api/v1
+https://your-domain.com/api/v1
 ```
 
 **Development Environment**:
@@ -55,7 +55,7 @@ Authorization: Basic <base64(username:password)>
 
 **Example**:
 ```bash
-curl -u username:password https://estimator.path-finder.jp/api/v1/tasks
+curl -u username:password https://your-domain.com/api/v1/tasks
 ```
 
 ### Development Environment
@@ -124,7 +124,7 @@ POST /api/v1/tasks
 
 **Request Example (File Upload)**:
 ```bash
-curl -X POST https://estimator.path-finder.jp/api/v1/tasks \
+curl -X POST https://your-domain.com/api/v1/tasks \
   -u username:password \
   -F "file=@input.xlsx" \
   -F "system_requirements=Requirements defined, 3-month development period"
@@ -132,7 +132,7 @@ curl -X POST https://estimator.path-finder.jp/api/v1/tasks \
 
 **Request Example (Web Form)**:
 ```bash
-curl -X POST https://estimator.path-finder.jp/api/v1/tasks \
+curl -X POST https://your-domain.com/api/v1/tasks \
   -u username:password \
   -F "deliverables_json=[{\"name\":\"Requirements Document\",\"description\":\"Define system requirements\"}]" \
   -F "system_requirements=Requirements defined"
@@ -180,7 +180,7 @@ GET /api/v1/tasks/{task_id}/questions
 
 **Request Example**:
 ```bash
-curl https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/questions \
+curl https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/questions \
   -u username:password
 ```
 
@@ -232,7 +232,7 @@ POST /api/v1/tasks/{task_id}/answers
 
 **Request Example**:
 ```bash
-curl -X POST https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/answers \
+curl -X POST https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/answers \
   -u username:password \
   -H "Content-Type: application/json" \
   -d '[
@@ -278,7 +278,7 @@ GET /api/v1/tasks/{task_id}/status
 
 **Request Example**:
 ```bash
-curl https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/status \
+curl https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/status \
   -u username:password
 ```
 
@@ -321,7 +321,7 @@ GET /api/v1/tasks/{task_id}/result
 
 **Request Example**:
 ```bash
-curl https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/result \
+curl https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/result \
   -u username:password
 ```
 
@@ -380,7 +380,7 @@ GET /api/v1/tasks/{task_id}/download
 
 **Request Example**:
 ```bash
-curl -O https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/download \
+curl -O https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/download \
   -u username:password
 ```
 
@@ -468,7 +468,7 @@ POST /api/v1/tasks/{task_id}/chat
 
 **Request Example**:
 ```bash
-curl -X POST https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/chat \
+curl -X POST https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/chat \
   -u username:password \
   -H "Content-Type: application/json" \
   -d '{
@@ -561,7 +561,7 @@ POST /api/v1/tasks/{task_id}/apply
 
 **Request Example**:
 ```bash
-curl -X POST https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/apply \
+curl -X POST https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/apply \
   -u username:password \
   -H "Content-Type: application/json" \
   -d '{
@@ -599,7 +599,7 @@ GET /api/v1/sample-input
 
 **Request Example**:
 ```bash
-curl -O https://estimator.path-finder.jp/api/v1/sample-input \
+curl -O https://your-domain.com/api/v1/sample-input \
   -u username:password
 ```
 
@@ -628,7 +628,7 @@ GET /api/v1/sample-input-csv
 
 **Request Example**:
 ```bash
-curl -O https://estimator.path-finder.jp/api/v1/sample-input-csv \
+curl -O https://your-domain.com/api/v1/sample-input-csv \
   -u username:password
 ```
 
@@ -650,7 +650,7 @@ GET /api/v1/translations
 
 **Request Example**:
 ```bash
-curl https://estimator.path-finder.jp/api/v1/translations \
+curl https://your-domain.com/api/v1/translations \
   -u username:password
 ```
 
@@ -875,7 +875,7 @@ curl https://estimator.path-finder.jp/api/v1/translations \
 #### Step 1: Create Task
 
 ```bash
-curl -X POST https://estimator.path-finder.jp/api/v1/tasks \
+curl -X POST https://your-domain.com/api/v1/tasks \
   -u username:password \
   -F "file=@input.xlsx" \
   -F "system_requirements=Requirements defined, 3-month development"
@@ -893,7 +893,7 @@ curl -X POST https://estimator.path-finder.jp/api/v1/tasks \
 #### Step 2: Get Questions
 
 ```bash
-curl https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/questions \
+curl https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/questions \
   -u username:password
 ```
 
@@ -909,7 +909,7 @@ curl https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-44665
 #### Step 3: Submit Answers
 
 ```bash
-curl -X POST https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/answers \
+curl -X POST https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/answers \
   -u username:password \
   -H "Content-Type: application/json" \
   -d '[
@@ -921,7 +921,7 @@ curl -X POST https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a7
 #### Step 4: Check Status (Polling)
 
 ```bash
-curl https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/status \
+curl https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/status \
   -u username:password
 ```
 
@@ -946,7 +946,7 @@ curl https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-44665
 #### Step 5: Get Result
 
 ```bash
-curl https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/result \
+curl https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/result \
   -u username:password
 ```
 
@@ -965,7 +965,7 @@ curl https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-44665
 #### Step 6: Download Excel
 
 ```bash
-curl -O https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/download \
+curl -O https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/download \
   -u username:password
 ```
 
@@ -976,7 +976,7 @@ curl -O https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-44
 #### Step 1: Chat Adjustment Request
 
 ```bash
-curl -X POST https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/chat \
+curl -X POST https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/chat \
   -u username:password \
   -H "Content-Type: application/json" \
   -d '{
@@ -1007,7 +1007,7 @@ curl -X POST https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a7
 #### Step 2: Apply Adjusted Estimates
 
 ```bash
-curl -X POST https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/apply \
+curl -X POST https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/apply \
   -u username:password \
   -H "Content-Type: application/json" \
   -d '{
@@ -1030,7 +1030,7 @@ curl -X POST https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a7
 #### Step 3: Download Updated Excel
 
 ```bash
-curl -O https://estimator.path-finder.jp/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/download \
+curl -O https://your-domain.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000/download \
   -u username:password
 ```
 
@@ -1054,7 +1054,7 @@ formData.append('deliverables_json', JSON.stringify([
 ]));
 formData.append('system_requirements', 'Requirements defined, 3-month development');
 
-const response = await fetch('https://estimator.path-finder.jp/api/v1/tasks', {
+const response = await fetch('https://your-domain.com/api/v1/tasks', {
   method: 'POST',
   headers: {
     'Authorization': 'Basic ' + btoa('username:password')

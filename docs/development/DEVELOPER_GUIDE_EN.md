@@ -39,7 +39,7 @@ cd ai-estimator2/backend
 ```bash
 # Create conda environment
 source /path/to/python/bin/activate
-conda create -n 311 python=3.11
+conda create -n your-python-env python=3.11
 conda activate your-python-env
 ```
 

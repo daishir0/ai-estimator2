@@ -54,7 +54,7 @@ Internet (HTTPS/HTTP)
 ┌───────────────────────────┐
 │ FastAPI Application       │
 │  - Python 3.11            │
-│  - conda env: 311         │
+│  - conda env: your-python-env         │
 │  - Multi-language (ja/en) │
 └───────────────────────────┘
     │
@@ -77,15 +77,15 @@ Internet (HTTPS/HTTP)
 - Reverse proxy (routing to backend)
 - HTTP→HTTPS redirect
 
-**Configuration File**: `/etc/httpd/conf.d/estimator.path-finder.jp.conf`
+**Configuration File**: `/etc/httpd/conf.d/your-domain.com.conf`
 
 **Key Configuration**:
 ```apache
 <VirtualHost *:443>
-    ServerName estimator.path-finder.jp
+    ServerName your-domain.com
     SSLEngine on
-    SSLCertificateFile /etc/letsencrypt/live/path-finder.jp/fullchain.pem
-    SSLCertificateKeyFile /etc/letsencrypt/live/path-finder.jp/privkey.pem
+    SSLCertificateFile /etc/letsencrypt/live/your-domain.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/your-domain.com/privkey.pem
 
     ProxyTimeout 600
 
@@ -107,7 +107,7 @@ Internet (HTTPS/HTTP)
 </VirtualHost>
 
 <VirtualHost *:80>
-    ServerName estimator.path-finder.jp
+    ServerName your-domain.com
     RewriteEngine On
     RewriteCond %{HTTPS} !=on
     RewriteRule ^/?(.*) https://%{SERVER_NAME}/ [R=301,L]
@@ -185,7 +185,7 @@ uvicorn app.main:app \
 - OpenAI API integration
 
 **Python Environment**:
-- Python 3.11 (conda environment: 311)
+- Python 3.11 (conda environment: your-python-env)
 - Framework: FastAPI
 - ORM: SQLAlchemy 2.0
 - Database: SQLite3
@@ -313,7 +313,7 @@ LANGUAGE=ja
 # Server
 HOST=127.0.0.1
 PORT=8100
-CORS_ORIGINS=https://estimator.path-finder.jp
+CORS_ORIGINS=https://your-domain.com
 ```
 
 ### Environment Variable Details
@@ -334,7 +334,7 @@ CORS_ORIGINS=https://estimator.path-finder.jp
 | `LANGUAGE` | System language (ja/en) | `ja` | ✓ |
 | `HOST` | Uvicorn bind host | `127.0.0.1` | ✓ |
 | `PORT` | Uvicorn port | `8100` | ✓ |
-| `CORS_ORIGINS` | CORS allowed origins | `https://estimator.path-finder.jp` | ✓ |
+| `CORS_ORIGINS` | CORS allowed origins | `https://your-domain.com` | ✓ |
 
 ### Environment Variable Caveats
 
@@ -389,8 +389,8 @@ sudo chown root:root /etc/httpd/.htpasswd_estimator
 ### SSL/TLS Certificate
 
 **Certificate Paths**:
-- Full chain: `/etc/letsencrypt/live/path-finder.jp/fullchain.pem`
-- Private key: `/etc/letsencrypt/live/path-finder.jp/privkey.pem`
+- Full chain: `/etc/letsencrypt/live/your-domain.com/fullchain.pem`
+- Private key: `/etc/letsencrypt/live/your-domain.com/privkey.pem`
 
 **Auto-renewal** (certbot):
 ```bash
@@ -462,7 +462,7 @@ curl -s http://127.0.0.1:8100/health
 {"status":"healthy"}
 
 # Production health check (Basic Auth required)
-curl -u username:password https://estimator.path-finder.jp/api/v1/health
+curl -u username:password https://your-domain.com/api/v1/health
 ```
 
 ### 4. Complete Startup Sequence
@@ -508,7 +508,7 @@ cd 09_pj-見積り作成システム/output3/backend
 ```bash
 # Create conda environment
 source /path/to/python/bin/activate
-conda create -n 311 python=3.11
+conda create -n your-python-env python=3.11
 conda activate your-python-env
 
 # Install dependencies
@@ -563,7 +563,7 @@ sudo systemctl start estimator
 
 ```bash
 # Place configuration file
-sudo cp /path/to/estimator.path-finder.jp.conf /etc/httpd/conf.d/
+sudo cp /path/to/your-domain.com.conf /etc/httpd/conf.d/
 
 # Test configuration
 sudo apachectl configtest
@@ -586,7 +586,7 @@ sudo chmod 644 /etc/httpd/.htpasswd_estimator
 
 ```bash
 # Obtain certificate (first time only)
-sudo certbot certonly --webroot -w /var/www/html -d estimator.path-finder.jp
+sudo certbot certonly --webroot -w /var/www/html -d your-domain.com
 
 # Auto-renewal setup
 sudo crontab -e
@@ -601,7 +601,7 @@ sudo crontab -e
 curl -s http://127.0.0.1:8100/health
 
 # Production check
-curl -u username:password https://estimator.path-finder.jp/api/v1/health
+curl -u username:password https://your-domain.com/api/v1/health
 ```
 
 ### Update Deployment
@@ -660,7 +660,7 @@ journalctl -u estimator -n 50
 curl -s http://127.0.0.1:8100/health
 
 # API test
-curl -u username:password https://estimator.path-finder.jp/api/v1/translations
+curl -u username:password https://your-domain.com/api/v1/translations
 ```
 
 ---
@@ -722,7 +722,7 @@ sudo systemctl restart estimator
 
 ```bash
 # Restore from backup
-sudo cp /etc/httpd/conf.d/estimator.path-finder.jp.conf.backup /etc/httpd/conf.d/estimator.path-finder.jp.conf
+sudo cp /etc/httpd/conf.d/your-domain.com.conf.backup /etc/httpd/conf.d/your-domain.com.conf
 
 # Test configuration
 sudo apachectl configtest
@@ -801,7 +801,7 @@ Shared RDS (PostgreSQL)
 1. **Database**: `backend/app.db`
 2. **Environment Variables**: `backend/.env`
 3. **Uploaded Files**: `backend/uploads/`
-4. **Apache Configuration**: `/etc/httpd/conf.d/estimator.path-finder.jp.conf`
+4. **Apache Configuration**: `/etc/httpd/conf.d/your-domain.com.conf`
 5. **systemd Configuration**: `/etc/systemd/system/estimator.service`
 
 ### Manual Backup
@@ -828,8 +828,8 @@ cp -r /path/to/ai-estimator2/backend/uploads \
    $BACKUP_DIR/$TIMESTAMP/
 
 # Apache configuration
-sudo cp /etc/httpd/conf.d/estimator.path-finder.jp.conf \
-   $BACKUP_DIR/$TIMESTAMP/estimator.path-finder.jp.conf
+sudo cp /etc/httpd/conf.d/your-domain.com.conf \
+   $BACKUP_DIR/$TIMESTAMP/your-domain.com.conf
 
 # systemd configuration
 sudo cp /etc/systemd/system/estimator.service \
@@ -920,7 +920,7 @@ sudo tail -f /var/log/httpd/estimator_error.log
 curl -s http://127.0.0.1:8100/health
 
 # Production health check
-curl -u username:password https://estimator.path-finder.jp/api/v1/health
+curl -u username:password https://your-domain.com/api/v1/health
 
 # Status code only
 curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8100/health
@@ -1034,7 +1034,7 @@ source /path/to/python/bin/activate
 conda env list
 
 # Create if missing
-conda create -n 311 python=3.11
+conda create -n your-python-env python=3.11
 conda activate your-python-env
 pip install -r requirements.txt
 

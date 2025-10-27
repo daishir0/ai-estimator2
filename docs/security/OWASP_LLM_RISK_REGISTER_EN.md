@@ -528,7 +528,6 @@ Since models are not hosted in-house, model theft risk is not applicable.
 - [OWASP LLM Top 10 Japanese Version](https://owasp.org/www-project-top-10-for-large-language-model-applications/llm-top-10-governance-doc/LLM_AI_Security_and_Governance_Checklist-v1.pdf)
 - `TODO/Guardrails-detail.md` - Guardrails implementation details
 - `TODO/Security-detail.md` - Security risk response details
-- `/home/your-username/your-project-dir/02_pj-ReadyTensor/output/doc/34_autonomy-meets-attack-securing-agentic-ai-from-real-world-exploits-aaidc-week9-lesson3.md`
 
 ---
 
