@@ -281,5 +281,20 @@
     {"name": "System Testing", "description": "System-wide operational and performance verification testing"},
     {"name": "Operations Manual", "description": "Manual documenting system operation and maintenance procedures"},
     {"name": "User Manual", "description": "End-user operation manual"}
-  ]
+  ],
+  "templates": {
+    "system_requirements": {
+      "label": "Template",
+      "select_placeholder": "Select Template",
+      "confirm_overwrite": "Overwrite current content?",
+      "website": {
+        "label": "Website Development",
+        "content": "# Website Development - Template\n\n1. Site Overview\n- Number of pages: \n- Site type: (Corporate / E-commerce / Media / Portfolio / Other)\n\n2. CMS & Platform\n- CMS selection: (WordPress / Movable Type / Custom CMS / Other: )\n- Customization level: (Template-based / Moderate customization / Full custom)\n\n3. Design & UI/UX\n- Responsive support: (PC / Mobile / Tablet)\n- Design requirements: \n\n4. Functional Requirements\n- Multi-language support: (English only / English & Japanese / Other: )\n- SNS integration: (Facebook / Twitter / Instagram / LINE / Other)\n- Contact form: (Yes / No)\n- Member features: (Yes / No)\n- Other features: \n\n5. SEO & Analytics\n- SEO measures: (Basic / Advanced / Not required)\n- Web analytics: (Google Analytics / Other: )\n\n6. Infrastructure & Security\n- Hosting: (Shared server / VPS / AWS / Other: )\n- SSL certificate: (Yes / No)\n- Security measures: \n\n7. Other Requirements\n- "
+      },
+      "web_system": {
+        "label": "Web System Development",
+        "content": "# Web System Development (Business System) - Template\n\n1. System Overview\n- System name: \n- Purpose & usage: \n\n2. User & Access Scale\n- Expected number of users: \n- Maximum concurrent connections: \n- Peak access estimation: \n\n3. Database\n- Data scale: (Records, capacity)\n- Database type: (MySQL / PostgreSQL / SQL Server / Oracle / Other: )\n\n4. External System Integration\n- Integration systems: (Salesforce / kintone / Accounting system / Other: )\n- Integration method: (REST API / SOAP / File transfer / Direct DB connection / Other: )\n\n5. Authentication & Security\n- Authentication method: (ID/Password / SSO / OAuth / SAML / Other: )\n- Access control: (Role-based / Organizational hierarchy / Other: )\n- Data encryption: (SSL/TLS / Database encryption / Other: )\n- Other security requirements: \n\n6. Infrastructure & Environment\n- Environment: (On-premises / Cloud (AWS / Azure / GCP) / Hybrid)\n- Redundancy: (Yes / No, details: )\n- Load balancing: (Yes / No)\n- Disaster recovery: (Required / Not required)\n\n7. Backup & Recovery\n- Backup frequency: (Real-time / Daily / Weekly / Other: )\n- Retention period: \n- Recovery Time Objective (RTO): \n- Recovery Point Objective (RPO): \n\n8. Maintenance & Operations\n- Operations structure: (24/7 / Weekdays 9am-6pm / Other: )\n- Monitoring requirements: \n- SLA requirements: (Uptime: % / Response time: seconds)\n\n9. Other Requirements\n- "
+      }
+    }
+  }
 }

@@ -231,6 +231,27 @@
       } finally { showSpinner(false); }
     }
 
+    function applyTemplate() {
+      const select = document.getElementById('template-select');
+      const textarea = document.getElementById('system_requirements');
+      const templateKey = select.value;
+
+      if (!templateKey) return;
+
+      // Check if there is existing content
+      if (textarea.value.trim() && !confirm(t('templates.system_requirements.confirm_overwrite'))) {
+        select.value = '';  // Reset selection
+        return;
+      }
+
+      // Get template content and insert
+      const templateContent = t(`templates.system_requirements.${templateKey}.content`);
+      textarea.value = templateContent;
+
+      // Reset selection (allow re-selection)
+      select.value = '';
+    }
+
     async function loadQuestions() {
       if (!currentTaskId) return;
       showSpinner(true);
@@ -826,7 +847,14 @@
         <!-- システム要件（共通） -->
         <div class="mt-4 space-y-4">
           <div>
-            <label class="text-sm text-slate-700" data-i18n="ui.label_system_requirements">システム要件（任意）</label>
+            <div class="flex items-center gap-2 mb-1">
+              <label class="text-sm text-slate-700" data-i18n="ui.label_system_requirements">システム要件（任意）</label>
+              <select id="template-select" class="text-xs rounded border-slate-300 px-2 py-1 text-slate-600" onchange="applyTemplate()">
+                <option value="" data-i18n="templates.system_requirements.select_placeholder">テンプレートを選択</option>
+                <option value="website" data-i18n="templates.system_requirements.website.label">Webサイト開発</option>
+                <option value="web_system" data-i18n="templates.system_requirements.web_system.label">Webシステム開発</option>
+              </select>
+            </div>
             <textarea id="system_requirements" rows="8" class="mt-1 w-full rounded border-slate-300 focus:border-brand-500 focus:ring-brand-500" data-i18n-placeholder="ui.placeholder_system_requirements" placeholder="例: Webシステム。最大同時100接続、AWS(ECS/RDS)、Salesforce連携など"></textarea>
           </div>
           <div class="flex items-center gap-3">
